@@ -121,8 +121,8 @@ def exit_icon():
 
 try:
 	options, args = getopt.getopt(args, "hvip:d:f", ["help", "version", "icon",
-							 "page=", "duration=",
-							 "feed"])
+	                                                 "page=", "duration=",
+	                                                 "feed"])
 except getopt.GetoptError as message:
 	exit_usage(message, 1)
 
@@ -436,7 +436,7 @@ def draw_page(page):
 
 		poster_size = poster.size()
 		aspect_ratio = ((poster_size.width*bounds_size.height)/
-				(bounds_size.width*poster_size.height))
+		                (bounds_size.width*poster_size.height))
 		if aspect_ratio < 1:
 			dw = bounds.size.width * (1.-aspect_ratio)
 			bounds.origin.x += dw/2.
@@ -767,8 +767,8 @@ class PresenterView(NSView):
 				elif c == '-':
 					self.zoom(cursor_location, -5)
 				else: # reset bbox to identity
-				    global bbox
-				    bbox = NSAffineTransform.transform()
+					global bbox
+					bbox = NSAffineTransform.transform()
 
 		if hasModifiers(event, NSControlKeyMask | NSCommandKeyMask):
 			c = event.charactersIgnoringModifiers()
@@ -1130,7 +1130,7 @@ def toggle_fullscreen(fullscreen=None):
 		if _switched_screens:
 			screens = reversed(screens)
 		for window, screen in reversed(list(zip([presenter_window, presentation_window],
-							screens))):
+		                                        screens))):
 			view = window.contentView()
 			if fullscreen:
 				view.enterFullScreenMode_withOptions_(screen, {})
