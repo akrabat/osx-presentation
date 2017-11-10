@@ -61,6 +61,7 @@ HELP = [
 	("s",         "show slide view"),
 	("f/F5/⎋",    "toggle/enter/leave fullscreen"),
 	("x",         "switch screens"),
+	("c/p",       "toggle mouse visibility"),
 	("←|↑|⇞",     "previous page"),
 	("→|↓|⇟",     "next page"),
 	("⌘←/→",      "back/forward"),
@@ -120,8 +121,8 @@ def exit_icon():
 
 try:
 	options, args = getopt.getopt(args, "hvip:d:f", ["help", "version", "icon",
-	                                                 "page=", "duration=",
-	                                                 "feed"])
+							 "page=", "duration=",
+							 "feed"])
 except getopt.GetoptError as message:
 	exit_usage(message, 1)
 
@@ -311,7 +312,7 @@ def goto_page(page):
 	page = min(max(first_page, page), last_page)
 	if page == current_page:
 		return
-	
+
 	if future_pages and page == future_pages[-1]:
 		forward()
 	elif past_pages and page == past_pages[-1]:
@@ -413,29 +414,29 @@ cursor_location = (0, 0)
 
 def draw_page(page):
 	bbox.concat()
-	
+
 	NSEraseRect(page.boundsForBox_(kPDFDisplayBoxCropBox))
 	page.drawWithBox_(kPDFDisplayBoxCropBox)
-	
+
 	NSColor.blackColor().setFill()
 	for annotation in annotations(page):
 		if not annotation in movies:
 			continue
 		bounds = annotation.bounds()
-		
+
 		_, poster = movies[annotation]
 		if poster is None:
 			continue
-		
+
 		bounds_size = bounds.size
 		if bounds_size.height < MIN_POSTER_HEIGHT:
 			continue
-		
+
 		NSRectFillUsingOperation(bounds, NSCompositeCopy)
-		
+
 		poster_size = poster.size()
 		aspect_ratio = ((poster_size.width*bounds_size.height)/
-		                (bounds_size.width*poster_size.height))
+				(bounds_size.width*poster_size.height))
 		if aspect_ratio < 1:
 			dw = bounds.size.width * (1.-aspect_ratio)
 			bounds.origin.x += dw/2.
@@ -444,11 +445,11 @@ def draw_page(page):
 			dh = bounds.size.height * (1.-1./aspect_ratio)
 			bounds.origin.y += dh/2.
 			bounds.size.height -= dh
-		
+
 		poster.drawInRect_fromRect_operation_fraction_(
 			bounds, NSZeroRect, NSCompositeCopy, 1.
 		)
-	
+
 	for path in drawings[current_page]:
 		NSColor.whiteColor().setStroke()
 		path.setLineWidth_(2)
@@ -461,21 +462,22 @@ def draw_page(page):
 # presentation ###############################################################
 
 class SlideView(NSView):
+	allow_cursor = False
 	show_cursor = False
 	hide_timer = None
-	
+
 	def drawRect_(self, rect):
 		bounds = self.bounds()
 		width, height = bounds.size
-		
+
 		NSRectFillUsingOperation(bounds, NSCompositeClear)
-		
+
 		# current page
 		page = pdf.pageAtIndex_(current_page)
 		page_rect = page.boundsForBox_(kPDFDisplayBoxCropBox)
 		_, (w, h) = page_rect
 		r = min(width/w, height/h)
-		
+
 		NSGraphicsContext.saveGraphicsState()
 		transform = NSAffineTransform.transform()
 		transform.translateXBy_yBy_(width/2., height/2.)
@@ -483,8 +485,8 @@ class SlideView(NSView):
 		transform.translateXBy_yBy_(-w/2., -h/2.)
 		transform.concat()
 		draw_page(page)
-		
-		if self.show_cursor:
+
+		if self.show_cursor and self.allow_cursor:
 			cursor_bounds = NSRect()
 			W, H = CURSOR.size()
 			iw, ih = transform.transformSize_((1., 1.))
@@ -494,10 +496,14 @@ class SlideView(NSView):
 			CURSOR.drawInRect_fromRect_operation_fraction_(
 				cursor_bounds, NSZeroRect, NSCompositeSourceAtop, 1.
 			)
-		
+
 		NSGraphicsContext.restoreGraphicsState()
-	
+
 	def showCursor(self):
+		if not self.allow_cursor:
+			self.show_cursor = False
+			self.setNeedsDisplay_(True)
+			return
 		self.show_cursor = True
 		self.setNeedsDisplay_(True)
 		if self.hide_timer:
@@ -506,19 +512,23 @@ class SlideView(NSView):
 			5.,
 			self, "hideCursor:",
 			nil, NO)
-	
+
 	def hideCursor_(self, timer):
 		self.show_cursor = False
+		self.setNeedsDisplay_(True)
+
+	def toggle_cursor_mirroring(self):
+		self.allow_cursor = not self.allow_cursor
 		self.setNeedsDisplay_(True)
 
 
 class MessageView(NSView):
 	fps = 20. # frame per seconds for animation
 	pps = 40. # pixels per seconds for scrolling
-	
+
 	input_lines = [u"…"]
 	should_check = True
-	
+
 	def initWithFrame_(self, frame):
 		assert NSView.initWithFrame_(self, frame) == self
 		self.redisplay_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
@@ -527,10 +537,10 @@ class MessageView(NSView):
 			True
 		)
 		return self
-	
+
 	def redisplay_(self, timer):
 		self.setNeedsDisplay_(True)
-	
+
 	def check_input(self):
 		while True:
 			ready, _, _ = select.select([sys.stdin], [], [], 0)
@@ -538,7 +548,7 @@ class MessageView(NSView):
 				break
 			line = sys.stdin.readline().decode('utf-8')
 			self.input_lines.append(line.rstrip())
-	
+
 	def drawRect_(self, rect):
 		if self.should_check:
 			self.check_input()
@@ -581,57 +591,57 @@ class PresenterView(NSView):
 	annotation_state = None
 	notes_scale = 1.
 	target_page = ""
-	
+
 	def drawRect_(self, rect):
 		bounds = self.bounds()
 		width, height = bounds.size
-		
+
 		margin = width / 20.
 		current_width = (width-3*margin)*2/3.
 		font_size = margin/2.
-		
+
 		NSRectFillUsingOperation(bounds, NSCompositeClear)
-		
-		# current 
+
+		# current
 		self.page = pdf.pageAtIndex_(current_page)
 		page_rect = self.page.boundsForBox_(kPDFDisplayBoxCropBox)
 		_, (w, h) = page_rect
 		r = current_width/w
-		
+
 		NSGraphicsContext.saveGraphicsState()
 		transform = NSAffineTransform.transform()
 		transform.translateXBy_yBy_(margin, height-1.5*margin)
 		transform.scaleXBy_yBy_(r, r)
 		transform.translateXBy_yBy_(0., -h)
 		transform.concat()
-		
+
 		NSGraphicsContext.saveGraphicsState()
 		draw_page(self.page)
-		
+
 		if state == DRAW:
 			NSGraphicsContext.restoreGraphicsState()
 			NSGraphicsContext.restoreGraphicsState()
 			return
-		
+
 		# links
 		NSColor.blueColor().setFill()
 		for annotation in annotations(self.page):
 			if type(annotation) == PDFAnnotationLink:
 				NSFrameRectWithWidth(annotation.bounds(), .5)
-		
+
 		self.transform = transform
 		self.transform.prependTransform_(bbox)
 		self.resetCursorRects()
 		self.transform.invert()
-		
+
 		NSGraphicsContext.restoreGraphicsState()
-		
+
 		# screen border
 		NSColor.grayColor().setFill()
 		NSFrameRect(page_rect)
 		NSGraphicsContext.restoreGraphicsState()
-		
-		
+
+
 		# time
 		now = time.time()
 		if now - self.duration_change_time <= 1: # duration changed, display it
@@ -647,7 +657,7 @@ class PresenterView(NSView):
 			NSForegroundColorAttributeName: NSColor.whiteColor(),
 		})
 		app.dockTile().setBadgeLabel_(clock)
-	
+
 		# page number
 		if self.target_page:
 			page_number = NSString.stringWithString_("goto %s/%s" % (
@@ -661,15 +671,15 @@ class PresenterView(NSView):
 		}
 		tw, _ = page_number.sizeWithAttributes_(attr)
 		page_number.drawAtPoint_withAttributes_((margin+current_width-tw,
-		                                         height-1.4*margin), attr)
-		
+							 height-1.4*margin), attr)
+
 		# notes
 		note = NSString.stringWithString_("\n".join(notes[current_page]))
 		note.drawAtPoint_withAttributes_((margin, font_size), {
 			NSFontAttributeName:            NSFont.labelFontOfSize_(font_size*self.notes_scale),
 			NSForegroundColorAttributeName: NSColor.whiteColor(),
 		})
-		
+
 		# help
 		if self.show_help:
 			help_text = _h("".join([
@@ -680,7 +690,7 @@ class PresenterView(NSView):
 				"</table>"
 			]))
 			help_text.drawAtPoint_((2*margin+current_width, 0))
-		
+
 		# next page
 		if current_page < last_page:
 			page = pdf.pageAtIndex_(current_page+1)
@@ -689,7 +699,7 @@ class PresenterView(NSView):
 		page_rect = page.boundsForBox_(kPDFDisplayBoxCropBox)
 		_, (w, h) = page_rect
 		r = current_width/2./w
-		
+
 		NSGraphicsContext.saveGraphicsState()
 		transform = NSAffineTransform.transform()
 		transform.translateXBy_yBy_(2*margin+current_width, height-1.5*margin)
@@ -697,55 +707,56 @@ class PresenterView(NSView):
 		transform.translateXBy_yBy_(0., -h)
 		transform.concat()
 		bbox.concat()
-		
+
 		NSEraseRect(page_rect)
 		page.drawWithBox_(kPDFDisplayBoxCropBox)
 		NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
 		NSRectFillUsingOperation(page_rect, NSCompositeSourceAtop)
 		NSGraphicsContext.restoreGraphicsState()
-	
-	
+
+
 	def resetCursorRects(self):
 		# updates rectangles only if needed (so that tooltip timeouts work)
 		annotation_state = (self.transform.transformStruct(), current_page)
 		if self.annotation_state == annotation_state:
 			return
 		self.annotation_state = annotation_state
-		
+
 		# reset cursor rects and tooltips
 		self.discardCursorRects()
 		self.removeAllToolTips()
-		
+
 		for i, annotation in enumerate(annotations(self.page)):
 			if type(annotation) != PDFAnnotationLink:
 				continue
-			
+
 			origin, size = annotation.bounds()
 			rect = (self.transform.transformPoint_(origin),
-			        self.transform.transformSize_(size))
+				self.transform.transformSize_(size))
 			self.addCursorRect_cursor_(rect, NSCursor.pointingHandCursor())
-			
+
 			self.addToolTipRect_owner_userData_(rect, self, i)
-	
-	
+
+
 	def view_stringForToolTip_point_userData_(self, view, tag, point, data):
 		annotation = annotations(self.page)[data]
 		return annotation.toolTip() or ""
-	
+
 	def zoom(self, point, percent):
 		bbox.translateXBy_yBy_(point.x, point.y)
 		bbox.scaleBy_(exp(percent*0.01))
 		bbox.translateXBy_yBy_(-point.x, -point.y)
 		refresher.refresh_()
-	
+
+
 	def keyDown_(self, event):
 		def send(c): # resend event with modified character
 			app.sendEvent_(NSEvent.keyEventWithType_location_modifierFlags_timestamp_windowNumber_context_characters_charactersIgnoringModifiers_isARepeat_keyCode_(
 				event.type(), event.locationInWindow(), event.modifierFlags(), event.timestamp(), event.windowNumber(), event.context(),
 				c, c, event.isARepeat(), ord(c)))
-		
+
 		c = event.characters()
-		
+
 		if hasModifiers(event, NSCommandKeyMask):
 			c = event.charactersIgnoringModifiers()
 			if c in "+=-_0)i": # slides scale
@@ -756,20 +767,20 @@ class PresenterView(NSView):
 				elif c == '-':
 					self.zoom(cursor_location, -5)
 				else: # reset bbox to identity
-					global bbox
-					bbox = NSAffineTransform.transform()
-		
+				    global bbox
+				    bbox = NSAffineTransform.transform()
+
 		if hasModifiers(event, NSControlKeyMask | NSCommandKeyMask):
 			c = event.charactersIgnoringModifiers()
 			if c not in 'f': # only handle cmd+ctrl+f as f for now
 				return
-		
+
 		if c == 'q': # quit
 			app.terminate_(self)
-		
+
 		elif c == 'r': # relaunch
 			os.execv(__file__, [__file__, '--page', str(current_page), url.path()])
-		
+
 		elif c in "0123456789" + CR + DEL:
 			if c == '0' and not self.target_page: # skip leading 0
 				send(')')                         # and rather change zoom
@@ -782,36 +793,36 @@ class PresenterView(NSView):
 				self.target_page = self.target_page[:-1]
 			else:
 				self.target_page += c
-		
+
 		elif c == ESC: # esc
 			toggle_fullscreen(fullscreen=False)
-		
+
 		elif c == NSF5FunctionKey:
 			toggle_fullscreen(fullscreen=True)
-		
+
 		elif c == 'x':
 			global _switched_screens
 			_switched_screens = not _switched_screens
 			toggle_fullscreen()
 			toggle_fullscreen()
-		
+
 		elif c == 'h':
 			app.hide_(app)
-		
+
 		elif c == '?':
 			self.show_help = not self.show_help
-		
+
 		elif c == ' ': # play/pause video
 			if movie_view.isHidden(): # or toggle timer
 				send('t')
 				return
-			
+
 			playing = movie_view.movie().rate() > 0.
 			if playing:
 				movie_view.pause_(self)
 			else:
 				movie_view.play_(self)
-		
+
 		elif c in "<>": # movie navigation
 			if movie_view.isHidden():
 				return
@@ -820,7 +831,7 @@ class PresenterView(NSView):
 				movie_view.stepBackward_(self)
 			else:
 				movie_view.stepForward_(self)
-		
+
 		elif c == 't': # toggle clock/timer
 			self.absolute_time = not self.absolute_time
 			now = time.time()
@@ -828,11 +839,11 @@ class PresenterView(NSView):
 				self.elapsed_duration += (now - self.start_time)
 			else:
 				self.start_time = now
-		
+
 		elif c in "z[]{}": # timer management
 			self.start_time = time.time()
 			self.elapsed_duration = 0
-			
+
 			self.duration += {
 				'{': -600,
 				'[':  -60,
@@ -842,11 +853,11 @@ class PresenterView(NSView):
 			}[c]
 			self.duration = max(0, self.duration)
 			self.duration_change_time = time.time()
-		
+
 		elif c in "+=-_0)": # notes or web view scale
 			if c == '=': c = '+'
 			if c == '_': c = '-'
-			
+
 			if web_view.isHidden(): # scaling notes
 				if c == '+':
 					self.notes_scale *= 1.1
@@ -865,10 +876,13 @@ class PresenterView(NSView):
 					scale = clip.convertSize_fromView_((1., 1.), None)
 				clip.scaleUnitSquareToSize_(scale)
 				document.setNeedsLayout_(True)
-		
+
 		elif c == 'e': # erase annotation
 			del drawings[current_page]
-		
+
+		elif c in 'cp': # toggle cursor mirroring
+			slide_view.toggle_cursor_mirroring()
+
 		else:
 			actions = {
 				'f':                     toggle_fullscreen,
@@ -897,19 +911,19 @@ class PresenterView(NSView):
 					NSPageUpFunctionKey:     prev_section,
 					NSPageDownFunctionKey:   next_section,
 				})
-			
+
 			action = actions.get(c, nop)
 			action()
-		
+
 		refresher.refresh_()
-	
+
 	def scrollWheel_(self, event):
 		if not hasModifiers(event, NSCommandKeyMask):
 			return
 		point = event.locationInWindow()
 		point = self.transform.transformPoint_(point)
 		self.zoom(point, event.deltaY())
-	
+
 	def mouseDown_(self, event):
 		global state
 		assert state == IDLE
@@ -918,12 +932,12 @@ class PresenterView(NSView):
 		else:
 			self.press_location = self.transform.transformPoint_(event.locationInWindow())
 			state = CLIC
-	
+
 	def mouseMoved_(self, event):
 		global cursor_location
 		cursor_location = self.transform.transformPoint_(event.locationInWindow())
 		slide_view.showCursor()
-	
+
 	def mouseDragged_(self, event):
 		global state, cursor_location
 		cursor_location = self.transform.transformPoint_(event.locationInWindow())
@@ -943,37 +957,37 @@ class PresenterView(NSView):
 			bbox.translateXBy_yBy_(delta.width, delta.height)
 		slide_view.showCursor()
 		self.setNeedsDisplay_(True)
-	
+
 	def mouseUp_(self, event):
 		global state
 		if state == CLIC:
 			self.click_(event)
 		state = IDLE
 		refresher.refresh_()
-	
+
 	def rightMouseUp_(self, event):
 		prev_page()
-	
+
 	def click_(self, event):
 		annotation = self.page.annotationAtPoint_(self.press_location)
 		if annotation is None:
 			next_page()
 			return
-		
+
 		if type(annotation) != PDFAnnotationLink:
 			return
-		
+
 		if annotation in movies:
 			movie, _ = movies[annotation]
 			movie_view.setMovie_(movie)
 			presentation_show(movie_view)
 			movie_view.play_(self)
 			return
-		
+
 		action = annotation.mouseUpAction()
 		destination = annotation.destination()
 		url = annotation.URL()
-		
+
 		if type(action) == PDFActionNamed:
 			action_name = action.name()
 			action = {
@@ -988,10 +1002,10 @@ class PresenterView(NSView):
 #				kPDFActionNamedPrint:        nop,
 			}.get(action_name, nop)
 			action()
-		
+
 		elif destination:
 			goto_page(pdf.indexForPage_(destination.page()))
-		
+
 		elif url:
 			web_view.mainFrame().loadRequest_(NSURLRequest.requestWithURL_(url))
 
@@ -1110,20 +1124,20 @@ def toggle_fullscreen(fullscreen=None):
 	_fullscreen = presenter_view.isInFullScreenMode()
 	if fullscreen is None:
 		fullscreen = not _fullscreen
-	
+
 	if fullscreen != _fullscreen:
 		screens = NSScreen.screens()
 		if _switched_screens:
 			screens = reversed(screens)
 		for window, screen in reversed(list(zip([presenter_window, presentation_window],
-		                                        screens))):
+							screens))):
 			view = window.contentView()
 			if fullscreen:
 				view.enterFullScreenMode_withOptions_(screen, {})
 			else:
 				view.exitFullScreenModeWithOptions_({})
 		presenter_window.makeFirstResponder_(presenter_view)
-	
+
 	return _fullscreen
 
 
@@ -1141,10 +1155,10 @@ def add_item(menu, title, action, key="", modifiers=NSCommandKeyMask, target=app
 
 def setup_menu(delegate):
 	main_menu = NSMenu.alloc().initWithTitle_("MainMenu")
-	
+
 	application_menuitem = main_menu.addItemWithTitle_action_keyEquivalent_("Application", None, ' ')
 	application_menu = NSMenu.alloc().initWithTitle_("Application")
-	
+
 	add_item(application_menu, ["About", NAME], "about:", target=delegate)
 	add_item(application_menu, ["Check for updates…"], "update:", target=delegate)
 	application_menu.addItem_(NSMenuItem.separatorItem())
@@ -1154,9 +1168,9 @@ def setup_menu(delegate):
 	application_menu.addItem_(NSMenuItem.separatorItem())
 	add_item(application_menu, ["Quit", NAME], "terminate:", 'q')
 	main_menu.setSubmenu_forItem_(application_menu, application_menuitem)
-	
+
 	app.setMainMenu_(main_menu)
-	
+
 	app.setApplicationIconImage_(ICON)
 
 
@@ -1180,7 +1194,7 @@ else:
 	notification_delegate = UserNotificationCenterDelegate.alloc().init()
 	notification_center = NSUserNotificationCenter.defaultUserNotificationCenter()
 	notification_center.setDelegate_(notification_delegate)
-	
+
 	def notify_update():
 		if user_defaults.boolForKey_(NO_NOTIFY):
 			return
@@ -1220,7 +1234,7 @@ class ApplicationDelegate(NSObject):
 			"Credits":            _h(CREDITS),
 			"ApplicationIcon":    ICON,
 		})
-	
+
 	def update_(self, sender):
 		version = get_version()
 		if version is None:
@@ -1228,14 +1242,14 @@ class ApplicationDelegate(NSObject):
 				NSError.errorWithDomain_code_userInfo_("unable to connect to internet,", 1, {})
 			).runModal()
 			return
-		
+
 		if version == VERSION:
 			title   = "No update available"
 			message = "Your version (%@) of %@ is up to date."
 		else:
 			title =   "Update available"
 			message = "A new version (%@) of %@ is available."
-		
+
 		button = NSAlert.alertWithMessageText_defaultButton_alternateButton_otherButton_informativeTextWithFormat_(
 			title,
 			"Go to website",
@@ -1249,18 +1263,18 @@ class ApplicationDelegate(NSObject):
 			user_defaults.setBool_forKey_(not user_defaults.boolForKey_(NO_NOTIFY), NO_NOTIFY)
 		else:
 			pass
-	
-	
+
+
 	def applicationDidFinishLaunching_(self, notification):
 		setup_menu(self)
 		notify_update()
-	
+
 	def applicationWillHide_(self, notification):
 		self.fullscreen = toggle_fullscreen(fullscreen=False)
-	
+
 	def applicationDidUnhide_(self, notification):
 		toggle_fullscreen(fullscreen=self.fullscreen)
-	
+
 	def applicationWillTerminate_(self, notification):
 		presentation_show()
 
