@@ -99,6 +99,7 @@ def exit_usage(message=None, code=0):
 		-h --help          print this help message then exit
 		-v --version       print version then exit
 		-i --icon          print icon then exit
+		-c --controls      enable controls in presentation window
 		-p --page <p>      start on page int(p)
 		-d --duration <t>  duration of the talk in minutes
 		-f --feed          enable reading feed on stdin
@@ -134,14 +135,15 @@ def exit_icon():
 # options
 
 try:
-	options, args = getopt.getopt(args, "hvip:d:f", ["help", "version", "icon",
-	                                                 "page=", "duration=",
+	options, args = getopt.getopt(args, "hvicp:d:f", ["help", "version", "icon",
+	                                                 "controls", "page=", "duration=",
 	                                                 "feed"])
 except getopt.GetoptError as message:
 	exit_usage(message, 1)
 
 start_page = None
 presentation_duration = 0
+presentation_controls = False
 show_feed = False
 
 for opt, value in options:
@@ -151,7 +153,9 @@ for opt, value in options:
 		exit_version()
 	elif opt in ["-i", "--icon"]:
 		exit_icon()
-	elif opt in ['-p', '--page']:
+	elif opt in ["-c", "--controls"]:
+		presentation_controls = True
+	elif opt in ["-p", "--page"]:
 		start_page = int(value)
 	elif opt in ["-d", "--duration"]:
 		presentation_duration = int(value)
@@ -1260,6 +1264,10 @@ presenter_view   = create_view(PresenterView, window=presenter_window)
 
 presenter_window.center()
 presenter_window.makeFirstResponder_(presenter_view)
+if presentation_controls:
+	presentation_window.makeFirstResponder_(presenter_view)
+else:
+	presentation_window.makeFirstResponder_(presentation_view)
 
 
 # handling full screens ######################################################
