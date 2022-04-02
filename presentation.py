@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 
@@ -160,6 +160,11 @@ if len(args) > 1:
 
 
 # application init ###########################################################
+
+# using bundled pyobjc
+sys.path.append(os.path.join(
+	os.path.abspath(os.path.dirname(__file__)),
+	'..', 'Resources', 'packages'))
 
 try:
 	from objc import setVerbose

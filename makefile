@@ -12,6 +12,7 @@ IDENTIFIER = $(word 2,$(version))
 script  := presentation.py
 icon    := presentation.icns
 iconset := presentation.iconset
+venv    := env
 app     := Présentation.app
 dist    := osx-presentation-$(VERSION).pkg
 src     := osx-presentation-$(VERSION).tbz
@@ -23,7 +24,7 @@ src     := osx-presentation-$(VERSION).tbz
 
 all: $(app)
 
-$(app): $(script) $(icon) makefile
+$(app): $(script) $(icon) $(venv) makefile
 	mkdir -p $@/Contents/
 	echo "APPL????" > $@/Contents/PkgInfo
 	echo "\
@@ -53,6 +54,7 @@ $(app): $(script) $(icon) makefile
 	
 	mkdir -p $@/Contents/Resources/
 	cp $(icon) $@/Contents/Resources/
+	cp -R $(venv)/lib/python3.8/site-packages $@/Contents/Resources/packages
 	
 	touch $@
 
@@ -62,6 +64,11 @@ $(icon): $(iconset)
 $(iconset): $(script)
 	mkdir -p $@
 	./$< --icon > $@/icon_256x256.png
+
+$(venv):
+	python3 -m venv env
+	./env/bin/pip install --upgrade pip
+	./env/bin/pip install -r requirements.txt
 
 archive:
 	hg archive -r $(VERSION) -t tbz2 $@
@@ -76,4 +83,4 @@ $(dist): $(app)
 
 
 clean:
-	-rm -rf $(app) $(src) $(dist) $(icon) $(iconset) $(DIST_PATH)
+	-rm -rf $(app) $(src) $(dist) $(icon) $(iconset) $(venv) $(DIST_PATH)
