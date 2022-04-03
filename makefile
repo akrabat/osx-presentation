@@ -14,13 +14,14 @@ icon    := presentation.icns
 iconset := presentation.iconset
 venv    := env
 app     := Présentation.app
+dev     := Présentation-dev.app
 dist    := osx-presentation-$(VERSION).pkg
 src     := osx-presentation-$(VERSION).tbz
 
 
 # rules ######################################################################
 
-.PHONY: all clean pkg archive
+.PHONY: all clean dev pkg archive
 
 all: $(app)
 
@@ -43,7 +44,7 @@ $(app): $(script) $(icon) $(venv) makefile
 			<key>LSHandlerRank</key><string>Alternate</string> \
 		</dict></array> \
 		<key>CFBundleShortVersionString</key><string>$(VERSION)</string> \
-		<key>NSHumanReadableCopyright</key><string>Copyright © 2011-2021 Renaud Blanch</string> \
+		<key>NSHumanReadableCopyright</key><string>Copyright © 2011-2022 Renaud Blanch</string> \
 		<key>CFBundleIconFile</key><string>presentation</string> \
 		<key>NSCameraUsageDescription</key><string>This app requires camera access to display video feed</string> \
 	</dict> \
@@ -70,6 +71,13 @@ $(venv):
 	./env/bin/pip install --upgrade pip
 	./env/bin/pip install -r requirements.txt
 
+dev: $(dev)
+
+$(dev): $(app)
+	cp -R $< $@
+	rm $@/Contents/MacOS/$(script)
+	ln $(script) $@/Contents/MacOS/
+
 archive:
 	hg archive -r $(VERSION) -t tbz2 $@
 
@@ -83,4 +91,4 @@ $(dist): $(app)
 
 
 clean:
-	-rm -rf $(app) $(src) $(dist) $(icon) $(iconset) $(venv) $(DIST_PATH)
+	-rm -rf $(app) $(src) $(dist) $(icon) $(iconset) $(venv) $(dev) $(DIST_PATH)
