@@ -67,9 +67,9 @@ $(iconset): $(script)
 	./$< --icon > $@/icon_256x256.png
 
 $(venv):
-	/usr/bin/python3 -m venv env
-	./env/bin/pip install --upgrade pip
-	./env/bin/pip install -r requirements.txt
+	/usr/bin/python3 -m venv $@
+	$@/bin/pip install --upgrade pip
+	$@/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --target=$@/lib/python3.8/site-packages -r requirements.txt
 
 dev: $(dev)
 
