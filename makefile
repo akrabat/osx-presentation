@@ -9,12 +9,15 @@ IDENTIFIER = $(word 2,$(version))
 
 # targets ####################################################################
 
+# note: for pkgutil to work, the é should be UTF-8 NFD encoded
+# this could be forced using this line in pkg build rule, but it would add a dependency
+# convmv -r -f utf8 -t utf8 --nfd --notest $(DIST_PATH)
+
+app     := Présentation.app
 script  := presentation.py
 icon    := presentation.icns
 iconset := presentation.iconset
 venv    := env
-app     := Présentation.app
-dev     := Présentation-dev.app
 dist    := osx-presentation-$(VERSION).pkg
 src     := osx-presentation-$(VERSION).tbz
 
