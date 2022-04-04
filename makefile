@@ -101,7 +101,9 @@ pkg: $(dist)
 $(dist): $(app)
 	mkdir -p $(DIST_PATH)
 	cp -r $^ $(DIST_PATH)
-	pkgbuild --root $(DIST_PATH) --identifier $(IDENTIFIER) --version $(VERSION) --install-location /Applications $@
+	pkgbuild --root $(DIST_PATH) --identifier $(IDENTIFIER) --version $(VERSION) --install-location /Applications temp.pkg
+	productsign --sign "Developer ID Installer: Renaud Blanch (J6M3684Y6M)" temp.pkg $@
+	rm temp.pkg
 	rm -rf $(DIST_PATH)
 
 
