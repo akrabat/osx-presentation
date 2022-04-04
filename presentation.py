@@ -877,19 +877,29 @@ class VideoView(NSView):
 			if authorization == AVAuthorizationStatusAuthorized:
 				self.start()
 			elif authorization == AVAuthorizationStatusNotDetermined:
-#				AVCaptureDevice.requestAccessForMediaType_completionHandler_(
-#					AVMediaTypeVideo,
-#					test,
-#				)
-#				TODO: explain how to run from terminal
+				AVCaptureDevice.requestAccessForMediaType_completionHandler_(
+					AVMediaTypeVideo,
+					self.requestAccessHandler_,
+				)
 				pass
 			else:
-				# should remind to turn on Camera access in Privacy
-				pass
+				alert = NSAlert.alertWithMessageText_defaultButton_alternateButton_otherButton_informativeTextWithFormat_(
+					"Authorization to access to Camera denied",
+					"Ok", nil, nil,
+					"You may want to grant access through the Security preference panel."
+				)
+				alert.setIcon_(ICON)
+				button = alert.runModal()
+				self.requestAccessHandler_(False)
 		else:
 			self.stop()
 		return super(VideoView, self).setHidden_(hidden)
 	
+	def requestAccessHandler_(self, r):
+		if r:
+			self.performSelectorOnMainThread_withObject_waitUntilDone_('setHidden:', nil, False)
+		else:
+			self.performSelectorOnMainThread_withObject_waitUntilDone_('setHidden:', YES, False)
 
 
 class MessageView(NSView):

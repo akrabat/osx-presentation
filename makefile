@@ -58,7 +58,19 @@ $(app): $(script) $(icon) $(venv) makefile
 	
 	mkdir -p $@/Contents/Resources/
 	cp $(icon) $@/Contents/Resources/
+	
 	cp -R $(venv)/lib/python3.8/site-packages $@/Contents/Resources/packages
+	
+	echo "\
+	<?xml version="1.0" encoding='UTF-8'?> \
+	<!DOCTYPE plist PUBLIC '-//Apple//DTD PLIST 1.0//EN' 'http://www.apple.com/DTDs/PropertyList-1.0.dtd'> \
+	<plist version='1.0'> \
+	<dict> \
+		<key>com.apple.security.device.camera</key> \
+		<true/> \
+	</dict> \
+	</plist>" | plutil -convert xml1 - -o $@/Contents/Entitlements.plist
+	codesign --verbose=4 --force --deep -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)"  --entitlements $@/Contents/Entitlements.plist $@
 	
 	touch $@
 
