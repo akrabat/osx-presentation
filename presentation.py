@@ -164,7 +164,7 @@ if len(args) > 1:
 
 # using bundled pyobjc
 sys.path.append(os.path.join(
-	os.path.abspath(os.path.dirname(__file__)),
+	os.path.dirname(os.path.realpath(__file__)),
 	'..', 'Resources', 'packages'))
 
 try:
@@ -172,10 +172,8 @@ try:
 except ImportError:
 	exit_popup("""\
 		The Python executable referenced by
-		'/usr/bin/env python'
+		'/usr/bin/python3'
 		can not import the PyObjC package.
-		
-		You may have installed your own version of Python and made it take over the system one.
 		
 		For Présentation.app to work, you have to install the PyObjC package for this version of Python.
 	""")
