@@ -182,6 +182,7 @@ from Foundation import (
 	NSURL, NSURLRequest, NSURLConnection,
 	NSURLRequestReloadIgnoringLocalCacheData,
 	NSKeyValueObservingOptionOld, NSKeyValueObservingOptionNew,
+	NSUserNotificationCenter, NSUserNotification,
 )
 
 from AppKit import (
@@ -1631,31 +1632,26 @@ def setup_menu(delegate):
 
 # notifications
 
-try:
-	from Foundation import (NSUserNotificationCenter, NSUserNotification)
-except ImportError:
-	def notify_update(): pass
-else:
-	class UserNotificationCenterDelegate(NSObject):
-		def userNotificationCenter_didActivateNotification_(self, center, notification):
-			NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(HOME))
-		def userNotificationCenter_shouldPresentNotification_(self, center, notification):
-			return True
-	notification_delegate = UserNotificationCenterDelegate.alloc().init()
-	notification_center = NSUserNotificationCenter.defaultUserNotificationCenter()
-	notification_center.setDelegate_(notification_delegate)
-	
-	def notify_update():
-		if user_defaults.boolForKey_(NO_NOTIFY):
-			return
-		version = get_version()
-		if version in [VERSION, None]:
-			return
-		notification = NSUserNotification.alloc().init()
-		notification.setTitle_(_s(NAME))
-		notification.setSubtitle_('A new version (%s) is available' % version)
-		notification.setIdentifier_('.'.join([ID, version]))
-		notification_center.scheduleNotification_(notification)
+class UserNotificationCenterDelegate(NSObject):
+	def userNotificationCenter_didActivateNotification_(self, center, notification):
+		NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(HOME))
+	def userNotificationCenter_shouldPresentNotification_(self, center, notification):
+		return True
+notification_delegate = UserNotificationCenterDelegate.alloc().init()
+notification_center = NSUserNotificationCenter.defaultUserNotificationCenter()
+notification_center.setDelegate_(notification_delegate)
+
+def notify_update():
+	if user_defaults.boolForKey_(NO_NOTIFY):
+		return
+	version = get_version()
+	if version in [VERSION, None]:
+		return
+	notification = NSUserNotification.alloc().init()
+	notification.setTitle_(_s(NAME))
+	notification.setSubtitle_('A new version (%s) is available' % version)
+	notification.setIdentifier_('.'.join([ID, version]))
+	notification_center.scheduleNotification_(notification)
 
 
 def get_version():
