@@ -91,13 +91,12 @@ if launched_from_finder:
 
 def exit_usage(message=None, code=0):
 	usage = textwrap.dedent("""\
-	Usage: %s [-hvip:d:f] <doc.pdf>
+	Usage: %s [-hvip:d:] <doc.pdf>
 		-h --help          print this help message then exit
 		-v --version       print version then exit
 		-i --icon          print icon then exit
 		-p --page <p>      start on page int(p)
 		-d --duration <t>  duration of the talk in minutes
-		-f --feed          enable reading feed on stdin
 		<doc.pdf>          file to present
 	""" % name)
 	if message:
