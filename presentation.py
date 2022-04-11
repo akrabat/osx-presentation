@@ -217,22 +217,9 @@ from AppKit import (
 	NSScreen, NSWorkspace, NSImage, NSBezierPath,
 	NSRoundLineCapStyle, NSRoundLineJoinStyle, NSEvenOddWindingRule,
 	NSLayoutConstraint,
+	NSEventTypeApplicationDefined, NSEventSubtypeTabletPoint,
+	NSColorPanelModeCrayon,
 )
-
-try:
-	from AppKit import NSEventTypeApplicationDefined
-except:
-	from AppKit import NSApplicationDefined as NSEventTypeApplicationDefined
-
-try:
-	from AppKit import NSColorPanelModeCrayon
-except:
-	NSColorPanelModeCrayon = 7
-
-try:
-	from AppKit import NSEventSubtypeTabletPoint
-except:
-	NSEventSubtypeTabletPoint = 1
 
 from Quartz import (
 	PDFDocument, PDFAnnotationText, PDFAnnotationLink, PDFActionNamed,
@@ -247,14 +234,6 @@ from WebKit import (
 	WKWebView, WKWebViewConfiguration,
 )
 
-# monkey patch objc to work around buggy AVFoundation bridgesupport
-import objc as _objc
-_objc_splitSignature = _objc.splitSignature
-def _splitSignature(typestr):
-	try:    return _objc_splitSignature(typestr)
-	except: return ('@',)
-_objc.splitSignature = _splitSignature
-
 from AVFoundation import (
 	AVAsset, AVPlayerItem, AVPlayer, AVPlayerLayer, AVAssetImageGenerator,
 	AVCaptureSession, AVCaptureDevice, AVCaptureDeviceInput, AVCaptureVideoPreviewLayer,
@@ -263,7 +242,6 @@ from AVFoundation import (
 	AVAuthorizationStatusAuthorized, AVAuthorizationStatusNotDetermined,
 )
 
-_objc.splitSignature = _objc_splitSignature
 
 
 if sys.version_info[0] == 3:
