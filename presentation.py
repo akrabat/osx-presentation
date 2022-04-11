@@ -866,10 +866,7 @@ class VideoView(NSView):
 		return super(VideoView, self).setHidden_(hidden)
 	
 	def requestAccessHandler_(self, r):
-		if r:
-			self.performSelectorOnMainThread_withObject_waitUntilDone_('setHidden:', nil, False)
-		else:
-			self.performSelectorOnMainThread_withObject_waitUntilDone_('setHidden:', YES, False)
+		self.performSelectorOnMainThread_withObject_waitUntilDone_('setHidden:', nil if r else YES, False)
 
 
 # presenter view #############################################################
