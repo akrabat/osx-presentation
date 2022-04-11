@@ -236,6 +236,8 @@ from AVFoundation import (
 	AVAuthorizationStatusAuthorized, AVAuthorizationStatusNotDetermined,
 )
 
+from CoreMedia import CMTimeMakeWithSeconds
+NSEC_PER_SEC = 1000000000
 
 
 _s = NSString.stringWithString_
@@ -707,29 +709,28 @@ class MovieView(NSView):
 			return
 		player.seekToTime_toleranceBefore_toleranceAfter_(
 			(t, st, 1, 0), (1, st, 1, 0), (1, st, 1, 0))
-		self.seekSlider_(None)
+		self.seekSlider_(player.currentTime())
 	
 	def stepByCount_(self, count):
 		self._pause()
 		player.currentItem().stepByCount_(count)
-		self.seekSlider_(None)
+		self.seekSlider_(player.currentTime())
 	
-	def seekSlider_(self, timer):
-		(t, st, _, _) = player.currentTime()
+	def seekSlider_(self, time):
+		(t, st, _, _) = time
 		try:
 			(d, sd, _, _) = player.currentItem().duration()
 			p = (1.*t/st) / (1.*d/sd)
 		except: # no current item
 			return 0.
 		self.slider.setDoubleValue_(p)
-		return p
 	
 	def play(self):
 		player.play()
-		self.timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-			1./15,
-			self, self.seekSlider_,
-			None, YES
+		self.time_observer = player.addPeriodicTimeObserverForInterval_queue_usingBlock_(
+			CMTimeMakeWithSeconds(0.1, NSEC_PER_SEC),
+			None,
+			self.seekSlider_
 		)
 	
 	def playItem_(self, player_item):
@@ -739,13 +740,13 @@ class MovieView(NSView):
 	def _pause(self):
 		player.pause()
 		try:
-			self.timer.invalidate()
+			player.removeTimeObserver_(self.time_observer)
 		except:
 			pass
 
 	def pause(self):
 		self._pause()
-		self.seekSlider_(None)
+		self.seekSlider_(player.currentTime())
 	
 	def isPlaying(self):
 		return player.rate() > 0.
