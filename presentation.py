@@ -133,15 +133,13 @@ def exit_icon():
 # options
 
 try:
-	options, args = getopt.getopt(args, "hvip:d:f", ["help", "version", "icon",
-	                                                 "page=", "duration=",
-	                                                 "feed"])
+	options, args = getopt.getopt(args, "hvip:d:", ["help", "version", "icon",
+	                                                 "page=", "duration="])
 except getopt.GetoptError as message:
 	exit_usage(message, 1)
 
 start_page = None
 presentation_duration = 0
-show_feed = False
 
 for opt, value in options:
 	if opt in ["-h", "--help"]:
@@ -154,8 +152,6 @@ for opt, value in options:
 		start_page = int(value)
 	elif opt in ["-d", "--duration"]:
 		presentation_duration = int(value)
-	elif opt in ["-f", "--feed"]:
-		show_feed = True
 
 if len(args) > 1:
 	exit_usage("no more than one argument is expected", 1)
@@ -879,59 +875,6 @@ class VideoView(NSView):
 			self.performSelectorOnMainThread_withObject_waitUntilDone_('setHidden:', nil, False)
 		else:
 			self.performSelectorOnMainThread_withObject_waitUntilDone_('setHidden:', YES, False)
-
-
-class MessageView(NSView):
-	fps = 20. # frame per seconds for animation
-	pps = 40. # pixels per seconds for scrolling
-	
-	input_lines = [u"…"]
-	should_check = True
-	
-	def initWithFrame_(self, frame):
-		assert NSView.initWithFrame_(self, frame) == self
-		self.redisplay_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-			1./self.fps,
-			self, "redisplay:", nil,
-			True
-		)
-		return self
-	
-	def redisplay_(self, timer):
-		self.setNeedsDisplay_(True)
-	
-	def check_input(self):
-		while True:
-			ready, _, _ = select.select([sys.stdin], [], [], 0)
-			if not ready:
-				break
-			line = sys.stdin.readline().decode('utf-8')
-			self.input_lines.append(line.rstrip())
-	
-	def drawRect_(self, rect):
-		if self.should_check:
-			self.check_input()
-			try:
-				self.text = self.input_lines.pop(0)
-			except IndexError:
-				pass
-			else:
-				self.start = time.time()
-				self.should_check = False
-		text = NSString.stringWithString_(self.text)
-		x = rect.size.width - self.pps*(time.time()-self.start)
-		for attr in [{
-			NSFontAttributeName:            NSFont.labelFontOfSize_(30),
-			NSStrokeColorAttributeName:     NSColor.colorWithDeviceWhite_alpha_(0., .75),
-			NSStrokeWidthAttributeName:     20.,
-		}, {
-			NSFontAttributeName:            NSFont.labelFontOfSize_(30),
-			NSForegroundColorAttributeName: NSColor.colorWithDeviceWhite_alpha_(1., .75),
-		}]:
-			text.drawAtPoint_withAttributes_((x, 4.), attr)
-		tw, _ = text.sizeWithAttributes_(attr)
-		if x < -tw:
-			self.should_check = True
 
 
 # presenter view #############################################################
@@ -2003,13 +1946,6 @@ add_subview(presentation_view, movie_view)
 _, (w, _) = frame
 video_view = VideoView.alloc().initWithFrame_(((w-200-20, 20), (200, 180)))
 add_subview(presentation_view, video_view, 0)
-
-# message view
-
-if show_feed:
-	frame.size.height = 40
-	message_view = MessageView.alloc().initWithFrame_(frame)
-	add_subview(presentation_view, message_view, NSViewWidthSizable)
 
 
 # views visibility
