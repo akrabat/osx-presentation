@@ -1749,18 +1749,11 @@ def setup_touchbar():
 	except:
 		return
 
-	try:
-		from AppKit import (
-			NSImageNameTouchBarPlayTemplate, NSImageNameTouchBarPauseTemplate,
-			NSImageNameTouchBarGoBackTemplate, NSImageNameTouchBarGoForwardTemplate,
-			NSImageNameTouchBarGoUpTemplate,
-		)
-	except:
-		NSImageNameTouchBarPlayTemplate = "NSTouchBarPlayTemplate"
-		NSImageNameTouchBarPauseTemplate = "NSTouchBarPauseTemplate"
-		NSImageNameTouchBarGoBackTemplate = "NSTouchBarGoBackTemplate"
-		NSImageNameTouchBarGoForwardTemplate = "NSTouchBarGoForwardTemplate"
-		NSImageNameTouchBarGoUpTemplate = "NSTouchBarGoUpTemplate"
+	from AppKit import (
+		NSImageNameTouchBarPlayTemplate, NSImageNameTouchBarPauseTemplate,
+		NSImageNameTouchBarGoBackTemplate, NSImageNameTouchBarGoForwardTemplate,
+		NSImageNameTouchBarGoUpTemplate,
+	)
 	
 	ImagePlay  = NSImage.imageNamed_(NSImageNameTouchBarPlayTemplate)
 	ImagePause = NSImage.imageNamed_(NSImageNameTouchBarPauseTemplate)
