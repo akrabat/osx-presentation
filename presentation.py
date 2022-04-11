@@ -24,10 +24,6 @@ import base64
 from math import exp, hypot
 from collections import defaultdict
 
-if sys.version_info[0] == 3:
-	sys.stdin  = sys.stdin.detach()  # so that sys.stdin.readline returns bytes
-	sys.stdout = sys.stdout.detach() # so that sys.stdout.write accepts bytes
-
 
 # constants and helpers ######################################################
 
@@ -122,10 +118,11 @@ def exit_relaunch(path, page):
 	os.execv(__file__, [__file__, '--page', str(page), path])
 
 def exit_version():
-	sys.stdout.write(("%s %s %s\n" % (os.path.basename(name), ID, VERSION)).encode())
+	sys.stdout.write("%s %s %s\n" % (os.path.basename(name), ID, VERSION))
 	sys.exit()
 
 def exit_icon():
+	sys.stdout = sys.stdout.detach() # so that sys.stdout.write accepts bytes
 	sys.stdout.write(ICON)
 	sys.exit()
 
