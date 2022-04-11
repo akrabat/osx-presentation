@@ -237,15 +237,11 @@ from AVFoundation import (
 
 
 
-if sys.version_info[0] == 3:
-	_s = NSString.stringWithString_
-	def _e(result): # some binding version returns tuple with error
-		result, error = result
-		if error: raise error
-		return result
-else:
-	_s = NSString.stringWithUTF8String_
-	def _e(result): return result
+_s = NSString.stringWithString_
+def _e(result): # some binding version returns tuple with error
+	result, error = result
+	if error: raise error
+	return result
 
 def _h(s):
 	h, _ = NSAttributedString.alloc().initWithHTML_documentAttributes_(
@@ -828,9 +824,9 @@ class VideoView(NSView):
 			self.stop()
 		if switch_device or self.device is None:
 			self.device = self.choose_device()
-		input = _e(AVCaptureDeviceInput.deviceInputWithDevice_error_(self.device, None))
-		if self.session.canAddInput_(input):
-			self.session.addInput_(input)
+		capture_input = _e(AVCaptureDeviceInput.deviceInputWithDevice_error_(self.device, None))
+		if self.session.canAddInput_(capture_input):
+			self.session.addInput_(capture_input)
 			self.session.startRunning()
 	
 	def stop(self):
