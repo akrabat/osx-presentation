@@ -156,9 +156,12 @@ if len(args) > 1:
 # application init ###########################################################
 
 # using bundled pyobjc
-sys.path.append(os.path.join(
-	os.path.dirname(os.path.realpath(__file__)),
-	'..', 'Resources', 'packages'))
+for path in [
+	('..', 'Resources', 'packages'),
+	('..', '..', '..', 'env', 'lib', 'python3.8', 'site-packages'),
+] :
+	sys.path.append(os.path.join(
+		os.path.dirname(os.path.realpath(__file__)), *path))
 
 try:
 	from objc import setVerbose

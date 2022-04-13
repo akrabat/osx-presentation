@@ -14,6 +14,7 @@ IDENTIFIER = $(word 2,$(version))
 # convmv -r -f utf8 -t utf8 --nfd --notest $(DIST_PATH)
 
 app     := Présentation.app
+dev     := Dev.app
 script  := presentation.py
 icon    := presentation.icns
 iconset := presentation.iconset
@@ -24,11 +25,12 @@ src     := osx-presentation-$(VERSION).tbz
 
 # rules ######################################################################
 
-.PHONY: all clean dev pkg archive
+.PHONY: all dev pkg archive clean
 
 all: $(app)
+dev: $(dev)
 
-$(app): $(script) $(icon) $(venv) makefile
+$(dev): $(script) $(icon) $(venv) makefile
 	mkdir -p $@/Contents/
 	echo "APPL????" > $@/Contents/PkgInfo
 	echo "\
@@ -54,12 +56,19 @@ $(app): $(script) $(icon) $(venv) makefile
 	</plist>" > $@/Contents/Info.plist
 	
 	mkdir -p $@/Contents/MacOS/
-	cp $< $@/Contents/MacOS/
+	ln -f $< $@/Contents/MacOS/
 	
 	mkdir -p $@/Contents/Resources/
-	cp $(icon) $@/Contents/Resources/
+	ln -f $(icon) $@/Contents/Resources/
 	
-	cp -R $(venv)/lib/python3.8/site-packages $@/Contents/Resources/packages
+	touch $@
+
+
+$(app): $(dev)
+	rm -rf $@
+	
+	cp -RL $< $@
+	cp -Rf $(venv)/lib/python3.8/site-packages $@/Contents/Resources/packages
 	
 	echo "\
 	<?xml version="1.0" encoding='UTF-8'?> \
@@ -80,19 +89,13 @@ $(icon): $(iconset)
 $(iconset): $(script)
 	mkdir -p $@
 	./$< --icon > $@/icon_256x256.png
+	touch $@
 
 $(venv):
 	/usr/bin/python3 -m venv $@
 	$@/bin/pip install --upgrade pip
 	$@/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --target=$@/lib/python3.8/site-packages -r requirements.txt
-
-dev: $(dev)
-
-$(dev): $(app)
-	cp -R $< $@
-	rm $@/Contents/MacOS/$(script)
-	ln $(script) $@/Contents/MacOS/
-
+	
 archive:
 	hg archive -r $(VERSION) -t tbz2 $@
 
@@ -105,7 +108,6 @@ $(dist): $(app)
 	productsign --sign "Developer ID Installer: Renaud Blanch (J6M3684Y6M)" temp.pkg $@
 	rm temp.pkg
 	rm -rf $(DIST_PATH)
-
 
 clean:
 	-rm -rf $(app) $(src) $(dist) $(icon) $(iconset) $(venv) $(dev) $(DIST_PATH)
