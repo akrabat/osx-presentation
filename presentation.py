@@ -84,8 +84,8 @@ def nop(): pass
 name, args = sys.argv[0], sys.argv[1:]
 
 # ignore "-psn" arg if we have been launched by the finder
-launched_from_finder = args and args[0].startswith("-psn")
-if launched_from_finder:
+launched_from_finder = os.environ['__CFBundleIdentifier'] == ID
+if launched_from_finder and args and args[0].startswith("-psn"):
 	args = args[1:]
 
 
