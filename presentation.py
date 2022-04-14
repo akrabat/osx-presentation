@@ -182,7 +182,12 @@ from Foundation import (
 	NSURL, NSURLRequest, NSURLConnection,
 	NSURLRequestReloadIgnoringLocalCacheData,
 	NSKeyValueObservingOptionOld, NSKeyValueObservingOptionNew,
-	NSUserNotificationCenter, NSUserNotification,
+)
+
+from UserNotifications import (
+	UNUserNotificationCenter,
+	UNAuthorizationOptionProvisional, UNAuthorizationOptionAlert,
+	UNMutableNotificationContent, UNNotificationRequest,
 )
 
 from AppKit import (
@@ -1636,25 +1641,35 @@ def setup_menu(delegate):
 # notifications
 
 class UserNotificationCenterDelegate(NSObject):
-	def userNotificationCenter_didActivateNotification_(self, center, notification):
+	def userNotificationCenter_didReceiveNotificationResponse_withCompletionHandler_(self, center, response, handler):
 		NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(HOME))
-	def userNotificationCenter_shouldPresentNotification_(self, center, notification):
-		return True
+		handler()
 notification_delegate = UserNotificationCenterDelegate.alloc().init()
-notification_center = NSUserNotificationCenter.defaultUserNotificationCenter()
+notification_center = UNUserNotificationCenter.currentNotificationCenter()
 notification_center.setDelegate_(notification_delegate)
 
-def notify_update():
-	if user_defaults.boolForKey_(NO_NOTIFY):
+def notifiedError_(error):
+	NSLog("%@", error)
+
+def authorizationGranted_Error_(granted, error):
+	if not granted:
 		return
 	version = get_version()
 	if version in [VERSION, None]:
 		return
-	notification = NSUserNotification.alloc().init()
+	notification = UNMutableNotificationContent.alloc().init()
 	notification.setTitle_(_s(NAME))
 	notification.setSubtitle_('A new version (%s) is available' % version)
-	notification.setIdentifier_('.'.join([ID, version]))
-	notification_center.scheduleNotification_(notification)
+	request = UNNotificationRequest.requestWithIdentifier_content_trigger_('.'.join([ID, version]), notification, None)
+	notification_center.addNotificationRequest_withCompletionHandler_(request, notifiedError_)
+	
+def notify_update():
+	if user_defaults.boolForKey_(NO_NOTIFY):
+		return
+	notification_center.requestAuthorizationWithOptions_completionHandler_(
+		UNAuthorizationOptionProvisional,
+		authorizationGranted_Error_,
+	)
 
 
 def get_version():
