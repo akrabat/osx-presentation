@@ -1461,7 +1461,7 @@ class PresenterView(NSView):
 		elif url:
 			web_view.loadRequest_(NSURLRequest.requestWithURL_(url))
 
-
+	delta = 0.
 	def scrollWheel_(self, event):
 		location = event.locationInWindow()
 		center = self.transform.transformPoint_(location)
@@ -1486,11 +1486,14 @@ class PresenterView(NSView):
 			slide_view.spotlight_radius *= exp(event.deltaY()*0.05)
 			refresher.refresh([slide_view])
 		else:
-			delta = event.deltaY()
-			if delta < 0:
+			self.delta += event.deltaY()
+			if abs(self.delta) < 1:
+				return
+			if self.delta < 0.:
 				next_page()
-			elif delta > 0:
+			elif self.delta > 0.:
 				prev_page()
+			self.delta = 0
 			refresher.refresh([slide_view])
 		refresher.refresh([self])
 	
