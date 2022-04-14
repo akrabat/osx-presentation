@@ -7,10 +7,10 @@ You can download this release here: http://iihm.imag.fr/blanch/software/osx-pres
 
 -----------------------------------------------------------------------------
 
-This release is a major code overhaul following python2 support being dropped by apple with Monterey.
+This release is a major code overhaul following python2 support being dropped by Apple with Monterey.
 
-The code has been Python 2/3 compatible for a long time, but relied on python2 and the PyObjC bindings provided by apple (which had a lot of shortcommings to be worked around).
-Switching to python3/recent PyObjC allowed for a major code clean-up, but with a cost: the PyObjC bindings are now embedded in the app and the app size is more than hundred times bigger (from 113kB to 15.5MB).
+The code has been Python 2/3 compatible for a long time, but relied on python2 and the PyObjC bindings provided by Apple (which had a lot of shortcommings to be worked around).
+Switching to python3/recent PyObjC allowed for a major code clean-up, but at a cost: the PyObjC bindings are now embedded in the app and the app size is more than hundred times bigger (from 113kB to 15.5MB).
 
 This release also includes many small fixes and improvements, see below for a list.
 
