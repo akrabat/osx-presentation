@@ -486,9 +486,11 @@ def lines(selection):
 beamer_notes = defaultdict(list)
 title_page = pdf.pageAtIndex_(0)
 (x, y), (w, h) = title_page.boundsForBox_(kPDFDisplayBoxMediaBox)
+ratio = w/h
 
-if w/h > 7/3: # likely to be a two screens pdf
+if ratio > 7/3: # likely to be a two screens pdf
 	# heuristic to guess template of note slide
+	ratio /= 2
 	w /= 2
 	title = lines(title_page.selectionForRect_(((x, y), (w, h))))
 	miniature = lines(title_page.selectionForRect_(((x+w+3*w/4, y+3*h/4), (w/4, h/4))))
@@ -1735,9 +1737,14 @@ class ApplicationDelegate(NSObject):
 
 # window utils ###############################################################
 
-def create_window(title, Window=NSWindow, style=NSMiniaturizableWindowMask|NSResizableWindowMask|NSTitledWindowMask):
+def create_window(title, Window=NSWindow, style=NSMiniaturizableWindowMask|NSResizableWindowMask|NSTitledWindowMask, ratio=None):
+	if ratio is None:
+		frame = PRESENTER_FRAME
+	else:
+		o, (w, _) = PRESENTER_FRAME
+		frame = o, (w, w/ratio)
 	window = Window.alloc().initWithContentRect_styleMask_backing_defer_screen_(
-		PRESENTER_FRAME,
+		frame,
 		style,
 		NSBackingStoreBuffered,
 		NO,
@@ -1772,7 +1779,7 @@ class Window(NSWindow):
 	def keyDown_(self, event):
 		return presenter_window.sendEvent_(event)
 
-presentation_window = create_window(file_name, Window=Window, style=NSBorderlessWindowMask|NSResizableWindowMask)
+presentation_window = create_window(file_name, Window=Window, style=NSBorderlessWindowMask|NSResizableWindowMask, ratio=ratio)
 presentation_window.setMovableByWindowBackground_(True)
 presentation_view   = presentation_window.contentView()
 frame = presentation_view.frame()
