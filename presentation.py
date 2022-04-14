@@ -1372,9 +1372,9 @@ class PresenterView(NSView):
 	# interaction
 
 	def inMiniaturesAt_(self, point):
-		_, (width, _) = self.bounds()
-		ex, _ = point
-		return ex > width - MINIATURE_WIDTH
+		_, (width, height) = self.bounds()
+		ex, ey = point
+		return (0 <= ey <= height) and (width - MINIATURE_WIDTH <= ex <= width)
 	
 	def pageAt_(self, point):
 		_, (_, height) = self.bounds()
