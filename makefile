@@ -94,7 +94,8 @@ $(iconset): $(script)
 $(venv): requirements.txt
 	/usr/bin/python3 -m venv $@
 	$@/bin/pip install --upgrade pip
-	$@/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --target=$@/lib/python3.8/site-packages -r @<
+	$@/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --target=$@/lib/python3.8/site-packages -r $<
+	touch $@
 	
 archive:
 	hg archive -r $(VERSION) -t tbz2 $@
