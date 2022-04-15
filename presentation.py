@@ -543,7 +543,7 @@ color_chooser.setColor_(NSColor.blackColor())
 def stroke(path, color=NSColor.blackColor(), outline=NSColor.whiteColor(), size=1):
 	if outline:
 		outline.setStroke()
-		path.setLineWidth_(size*2)
+		path.setLineWidth_(size+1)
 		path.stroke()
 	color.setStroke()
 	path.setLineWidth_(size)

@@ -77,9 +77,12 @@ $(app): $(dev)
 	<dict> \
 		<key>com.apple.security.device.camera</key> \
 		<true/> \
+		<key>com.apple.security.cs.allow-unsigned-executable-memory</key> \
+		<true/> \
 	</dict> \
 	</plist>" | plutil -convert xml1 - -o $@/Contents/Entitlements.plist
-	codesign --verbose=4 --force --deep -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)"  --entitlements $@/Contents/Entitlements.plist $@
+	find $@ -name '*.so' -exec codesign --verbose --force --timestamp -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)" --entitlements $@/Contents/Entitlements.plist -o runtime {} ';'
+	codesign --verbose --force --deep --timestamp -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)" --entitlements $@/Contents/Entitlements.plist -o runtime $@
 	
 	touch $@
 
@@ -101,14 +104,11 @@ archive:
 	hg archive -r $(VERSION) -t tbz2 $@
 
 pkg: $(dist)
+	xcrun altool --notarize-app --primary-bundle-id $(IDENTIFIER) --username 'blanch@imag.fr' --password '@keychain:Developer-altool' --file $<
 
 $(dist): $(app)
-	mkdir -p $(DIST_PATH)
-	cp -r $^ $(DIST_PATH)
-	pkgbuild --root $(DIST_PATH) --identifier $(IDENTIFIER) --version $(VERSION) --install-location /Applications temp.pkg
-	productsign --sign "Developer ID Installer: Renaud Blanch (J6M3684Y6M)" temp.pkg $@
-	rm temp.pkg
-	rm -rf $(DIST_PATH)
+	productbuild --timestamp --sign "Developer ID Installer: Renaud Blanch (J6M3684Y6M)" --identifier $(IDENTIFIER) --version $(VERSION) --component $^ /Applications $@
 
 clean:
 	-rm -rf $(app) $(src) $(dist) $(icon) $(iconset) $(venv) $(dev) $(DIST_PATH)
+
