@@ -861,7 +861,7 @@ class VideoView(NSView):
 				pass
 			else:
 				alert = NSAlert.alertWithMessageText_defaultButton_alternateButton_otherButton_informativeTextWithFormat_(
-					"Authorization to access to Camera denied",
+					"Access to Camera denied",
 					"Ok", nil, nil,
 					"You may want to grant access through the Security preference panel."
 				)
