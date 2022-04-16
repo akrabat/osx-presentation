@@ -1,7 +1,5 @@
 # variables ##################################################################
 
-DIST_PATH = release
-
 version = $(shell ./presentation.py --version)
 VERSION = $(lastword $(version))
 IDENTIFIER = $(word 2,$(version))
@@ -18,9 +16,9 @@ dev     := Dev.app
 script  := presentation.py
 icon    := presentation.icns
 iconset := presentation.iconset
+objc    := packages
 venv    := env
 dist    := osx-presentation-$(VERSION).pkg
-src     := osx-presentation-$(VERSION).tbz
 
 
 # rules ######################################################################
@@ -28,9 +26,33 @@ src     := osx-presentation-$(VERSION).tbz
 .PHONY: all dev pkg archive clean
 
 all: $(app)
+
+$(app): $(dev)
+	rm -rf $@
+	
+	cp -RL $< $@
+	cp -Rf $(objc) $@/Contents/Resources/packages
+	
+	echo "\
+	<?xml version="1.0" encoding='UTF-8'?> \
+	<!DOCTYPE plist PUBLIC '-//Apple//DTD PLIST 1.0//EN' 'http://www.apple.com/DTDs/PropertyList-1.0.dtd'> \
+	<plist version='1.0'> \
+	<dict> \
+		<key>com.apple.security.device.camera</key> \
+		<true/> \
+		<key>com.apple.security.cs.allow-unsigned-executable-memory</key> \
+		<true/> \
+	</dict> \
+	</plist>" | plutil -convert xml1 - -o $@/Contents/Entitlements.plist
+	find $@ -name '*.so' -exec codesign --verbose --force --timestamp -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)" --entitlements $@/Contents/Entitlements.plist -o runtime {} ';'
+	codesign --verbose --force --deep --timestamp -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)" --entitlements $@/Contents/Entitlements.plist -o runtime $@
+	
+	touch $@
+
+
 dev: $(dev)
 
-$(dev): $(script) $(icon) $(venv) makefile
+$(dev): $(script) $(icon) $(objc) makefile
 	mkdir -p $@/Contents/
 	echo "APPL????" > $@/Contents/PkgInfo
 	echo "\
@@ -64,28 +86,6 @@ $(dev): $(script) $(icon) $(venv) makefile
 	touch $@
 
 
-$(app): $(dev)
-	rm -rf $@
-	
-	cp -RL $< $@
-	cp -Rf $(venv)/lib/python3.8/site-packages $@/Contents/Resources/packages
-	
-	echo "\
-	<?xml version="1.0" encoding='UTF-8'?> \
-	<!DOCTYPE plist PUBLIC '-//Apple//DTD PLIST 1.0//EN' 'http://www.apple.com/DTDs/PropertyList-1.0.dtd'> \
-	<plist version='1.0'> \
-	<dict> \
-		<key>com.apple.security.device.camera</key> \
-		<true/> \
-		<key>com.apple.security.cs.allow-unsigned-executable-memory</key> \
-		<true/> \
-	</dict> \
-	</plist>" | plutil -convert xml1 - -o $@/Contents/Entitlements.plist
-	find $@ -name '*.so' -exec codesign --verbose --force --timestamp -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)" --entitlements $@/Contents/Entitlements.plist -o runtime {} ';'
-	codesign --verbose --force --deep --timestamp -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)" --entitlements $@/Contents/Entitlements.plist -o runtime $@
-	
-	touch $@
-
 $(icon): $(iconset)
 	iconutil --convert icns --output $@ $<
 
@@ -94,14 +94,16 @@ $(iconset): $(script)
 	./$< --icon > $@/icon_256x256.png
 	touch $@
 
-$(venv): requirements.txt
+
+$(objc): requirements.txt $(venv)
+	mkdir -p $@
+	$(venv)/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --target=$@ -r $<
+	
+$(venv):
 	/usr/bin/python3 -m venv $@
 	$@/bin/pip install --upgrade pip
-	$@/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --target=$@/lib/python3.8/site-packages -r $<
 	touch $@
-	
-archive:
-	hg archive -r $(VERSION) -t tbz2 $@
+
 
 pkg: $(dist)
 	xcrun altool --notarize-app --primary-bundle-id $(IDENTIFIER) --username 'blanch@imag.fr' --password '@keychain:Developer-altool' --file $<
@@ -109,6 +111,10 @@ pkg: $(dist)
 $(dist): $(app)
 	productbuild --timestamp --sign "Developer ID Installer: Renaud Blanch (J6M3684Y6M)" --identifier $(IDENTIFIER) --version $(VERSION) --component $^ /Applications $@
 
-clean:
-	-rm -rf $(app) $(src) $(dist) $(icon) $(iconset) $(venv) $(dev) $(DIST_PATH)
 
+archive:
+	hg archive -r $(VERSION) -t tbz2 $@
+
+
+clean:
+	-rm -rf  $(dist) $(app) $(dev) $(icon) $(iconset) $(objc) $(venv)
