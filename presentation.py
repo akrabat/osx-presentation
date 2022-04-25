@@ -221,7 +221,8 @@ from AppKit import (
 )
 
 from Quartz import (
-	PDFDocument, PDFAnnotationText, PDFAnnotationLink, PDFActionNamed,
+	PDFDocument,
+	PDFAnnotation, PDFAnnotationText, PDFAnnotationLink, PDFActionNamed,
 	kPDFActionNamedNextPage, kPDFActionNamedPreviousPage,
 	kPDFActionNamedFirstPage, kPDFActionNamedLastPage,
 	kPDFActionNamedGoBack, kPDFActionNamedGoForward,
@@ -468,6 +469,9 @@ def get_movie(url):
 def annotations(page):
 	return page.annotations() or []
 
+def link_or_movie(annotation):
+	return annotation.type() in ['Link', 'Movie']
+
 pdf_notes  = defaultdict(list)
 movies = {}
 for page_number in range(page_count):
@@ -477,8 +481,15 @@ for page_number in range(page_count):
 		if annotation_type == PDFAnnotationText:
 			annotation.setShouldDisplay_(False)
 			pdf_notes[page_number].append(annotation.contents().replace('\r', '\n'))
-		elif annotation_type == PDFAnnotationLink:
-			movie = get_movie(annotation.URL())
+		elif link_or_movie(annotation):
+			if annotation_type == PDFAnnotationLink:
+				movie = get_movie(annotation.URL())
+			else:
+				d = annotation.annotationKeyValues()
+				m = d['/Movie']
+				for k in m:
+					if str(k) != '<CGPDFNameRef (/F)>': continue
+					movie = get_movie(url.URLByDeletingLastPathComponent().URLByAppendingPathComponent_(m[k]))
 			if movie:
 				movies[annotation] = movie
 
@@ -986,7 +997,7 @@ class PresenterView(NSView):
 			# links
 			NSColor.blueColor().setFill()
 			for annotation in annotations(self.page):
-				if type(annotation) == PDFAnnotationLink:
+				if link_or_movie(annotation):
 					NSFrameRectWithWidth(annotation.bounds(), .5)
 
 		for path, color, size in drawings[page]:
@@ -1151,7 +1162,7 @@ class PresenterView(NSView):
 			return
 		
 		for i, annotation in enumerate(annotations(self.page)):
-			if type(annotation) != PDFAnnotationLink:
+			if not link_or_movie(annotation):
 				continue
 			
 			rect = transform_rect(self.transform, annotation.bounds())
@@ -1432,7 +1443,7 @@ class PresenterView(NSView):
 			next_page()
 			return
 		
-		if type(annotation) != PDFAnnotationLink:
+		if not link_or_movie(annotation):
 			return
 		
 		if annotation in movies:
