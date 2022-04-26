@@ -1515,6 +1515,7 @@ class PresenterView(NSView):
 				kPDFActionNamedNone:         lambda: advance_animation(annotation),
 			}.get(action_name, nop)
 			action()
+			refresher.refresh()
 		
 		elif destination:
 			goto_page(pdf.indexForPage_(destination.page()))
