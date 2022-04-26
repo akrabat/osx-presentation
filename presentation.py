@@ -485,11 +485,11 @@ for page_number in range(page_count):
 			if annotation_type == PDFAnnotationLink:
 				movie = get_movie(annotation.URL())
 			else:
-				d = annotation.annotationKeyValues()
-				m = d['/Movie']
-				for k in m:
+				attrs = annotation.annotationKeyValues()['/Movie']
+				movie = None
+				for k in attrs:
 					if str(k) != '<CGPDFNameRef (/F)>': continue
-					movie = get_movie(url.URLByDeletingLastPathComponent().URLByAppendingPathComponent_(m[k]))
+					movie = get_movie(url.URLByDeletingLastPathComponent().URLByAppendingPathComponent_(attrs[k]))
 			if movie:
 				movies[annotation] = movie
 
