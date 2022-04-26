@@ -1,17 +1,36 @@
-I am happy to announce the release of Présentation.app 2.3.
+I am happy to announce the release of Présentation.app 3.0.
+
+-----------------------------------------------------------------------------
 
 Présentation.app is a presentation tool for pdf slides (e.g. produced using LaTeX and the popular beamer class) for Mac OS X.
 You can download this release here: http://iihm.imag.fr/blanch/software/osx-presentation/releases/
 
-The notable recent changes are centered on making Présentation.app more usable for distant presentation/teaching.
-Features introduced since 2.0:
-  - added a "spotlight" mode to highlight on presentation screen
-  - added possibility to elarge the cursor on presentation screen
-  - added possibility to inset live video from the presenter
-  - added a white board and support for pen interaction
-  - added support for more than 2 screens setups
+-----------------------------------------------------------------------------
 
-Its most notable features are:
+This release is a major code overhaul following python2 support being dropped by Apple with Monterey.
+
+The code has been Python 2/3 compatible for a long time, but relied on python2 and the PyObjC bindings provided by Apple (which had a lot of shortcommings to be worked around).
+Switching to python3/recent PyObjC allowed for a major code clean-up, but at a cost: the PyObjC bindings are now embedded in the app and the app size is more than hundred times bigger (from 113kB to 15.5MB).
+
+This release also includes many small fixes and improvements, see below for a list.
+
+The app is also now signed which makes it possible again to access the video camera and easier to install.
+
+
+Signing the app is only possible by buying a membership to the apple developer program, at the cost of 99 USD a year.
+In order to cover this expense, I have setup a buymeacoffee page where any user can contribute a small amount:
+
+https://www.buymeacoffee.com/rndblnch
+
+-----------------------------------------------------------------------------
+
+Présentation most notable features are:
+
++ support for distant presentation/teaching
+  - inset of live video from the presenter
+  - white board and support for pen interaction
+  - support for more than 2 screens setups
+  - "spotlight" and large cursor mode on presentation screen
 
 + a presenter view displaying
   - the current and next slide
@@ -27,8 +46,31 @@ Its most notable features are:
   - from the command line (as it is a Python script)
   - from the Finder (as it accepts dropping a PDF file to launch the app)
 
+More details at:
+http://iihm.imag.fr/blanch/software/osx-presentation/
 
-Changes since 1.0
+-----------------------------------------------------------------------------
+
+Changes since 3.0
+
+3.0.0:
+  - opened a buymeacoffee page
+  - better handling of miniature hovering and srcoll wheel
+  - presentation view has now pdf aspect ratio
+  - fixed open with and drag open
+  - added video device picking
+  - removed TouchBar support, scrolling message view
+  - app is now signed
+  - switched to /usr/bin/python3 and embedded PyObjC (major code clean-up)
+
+-----------------------------------------------------------------------------
+
+Changes since 2.0
+
+2.3.1:
+  - showing target slide in preview when hovering miniatures
+  - using crosshair instead of arrow cursor
+  - made presentation window borderless for prettier window sharing
 
 2.3.0:
   - added white board
@@ -59,6 +101,10 @@ Changes since 1.0
   - moved project from bitbucket to heptapod
   - made the transition from deprecated QTMovie to AVFoundation for movie playback
   - fixed issues and crash on Mac OS X 10.15 (Catalina)
+
+-----------------------------------------------------------------------------
+
+Changes since 1.0
 
 1.9:
   - added support for beamer's notes on second screen
@@ -111,7 +157,6 @@ Changes since 1.0
   - improved control of movie playback
   - added timer displayed on dock icon
 
-More details at: http://iihm.imag.fr/blanch/software/osx-presentation/
 
 -- 
 Renaud
