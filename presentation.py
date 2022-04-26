@@ -68,7 +68,7 @@ HELP = [
 	(    "+/-/0", "zoom in/out/reset speaker notes or web view"),
 	(  "t|space", "start or stop timer"),
 	(    "space", "play/pause movie (in movie view)"),
-	("&lt;/&gt;", "step movie backward/forward"),
+	("&lt;/&gt;", "step movie/animation backward/forward"),
 	(        "l", "toggle spotlight"),
 	(      "p/P", "reduce/augment pointer/spotlight size"),
 	(        "e", "erase on-screen annotations"),
@@ -487,13 +487,12 @@ def prepare_animation(frames):
 		annotation.setValue_forAnnotationKey_(flags, 'F')
 	frames[0].setShouldDisplay_(True)
 
-def advance_animation(annotation):
+def advance_animation(annotation, step=1):
 	frames = annotation.valueForAnnotationKey_('Frames')
 	annotation.setShouldDisplay_(False)
 	i = frames.index(annotation)
-	frames[(i+1) % len(frames)].setShouldDisplay_(True)
+	frames[(i+step) % len(frames)].setShouldDisplay_(True)
 	
-
 def process_frames(animation_frames):
 	bounds = None
 	frames = []
@@ -524,7 +523,7 @@ for page_number in range(page_count):
 			if annotation_type == 'Link':
 				movie = get_movie(annotation.URL())
 			else:
-				attrs = annotation.annotationKeyValues()['/Movie']
+				attrs = annotation.valueForAnnotationKey_('Movie')
 				movie = None
 				for k in attrs:
 					if str(k) != '<CGPDFNameRef (/F)>': continue
@@ -1314,9 +1313,19 @@ class PresenterView(NSView):
 				movie_view.play()
 		
 		elif c in "<>": # movie navigation
+			step = 1 if c == '>' else -1
 			if movie_view.isHidden():
-				return
-			movie_view.stepByCount_(1 if c == '>' else -1)
+				try:
+					annotation = [
+						a
+						for a in annotations(self.page)
+						if a.type() == 'Widget' and a.shouldDisplay()
+					][0]
+				except:
+					return
+				advance_animation(annotation, step)
+			else:
+				movie_view.stepByCount_(step)
 		
 		elif c == 't': # toggle clock/timer
 			self.absolute_time = not self.absolute_time
