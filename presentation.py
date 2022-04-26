@@ -10,7 +10,7 @@ Licence: GPLv3 or higher <http://www.gnu.org/licenses/gpl.html>
 """
 
 
-# imports ####################################################################
+# imports ###################################################################
 
 import sys
 import os
@@ -24,7 +24,7 @@ from math import exp, hypot
 from collections import defaultdict
 
 
-# constants and helpers ######################################################
+# constants and helpers #####################################################
 
 NAME = "Présentation"
 ID = "fr.imag.iihm.blanch.osx-presentation"
@@ -77,7 +77,7 @@ HELP = [
 def nop(): pass
 
 
-# handling args ##############################################################
+# handling args #############################################################
 
 name, args = sys.argv[0], sys.argv[1:]
 
@@ -151,7 +151,7 @@ if len(args) > 1:
 	exit_usage("no more than one argument is expected", 1)
 
 
-# application init ###########################################################
+# application init ##########################################################
 
 # using bundled pyobjc
 for path in [
@@ -175,6 +175,7 @@ except ImportError:
 setVerbose(1)
 
 from objc import nil, NO, YES
+
 from Foundation import (
 	NSLog, NSNotificationCenter, NSUserDefaults, NSAffineTransform,
 	NSObject, NSTimer, NSError, NSString, NSData, NSArray,
@@ -221,11 +222,11 @@ from AppKit import (
 )
 
 from Quartz import (
-	PDFDocument,
-	PDFAnnotation, PDFAnnotationText, PDFAnnotationLink, PDFActionNamed,
+	PDFDocument, PDFActionNamed,
 	kPDFActionNamedNextPage, kPDFActionNamedPreviousPage,
 	kPDFActionNamedFirstPage, kPDFActionNamedLastPage,
 	kPDFActionNamedGoBack, kPDFActionNamedGoForward,
+	kPDFActionNamedNone,
 	kPDFDisplayBoxMediaBox, kPDFDisplayBoxCropBox,
 	CGShieldingWindowLevel,
 )
@@ -274,6 +275,8 @@ cursor = NSCursor.crosshairCursor()
 CURSOR = cursor.image()
 X_hot, Y_hot = cursor.hotSpot()
 
+
+# presentation ##############################################################
 
 restarted = False # has the application been restarted before actual launch
 
@@ -411,7 +414,7 @@ def next_section(): goto_page(_next(sections))
 def prev_section(): goto_page(_prev(sections))
 
 
-# annotations
+# movie annotations
 
 player = AVPlayer.playerWithURL_(None)
 nop_event = NSEvent.otherEventWithType_location_modifierFlags_timestamp_windowNumber_context_subtype_data1_data2_(
@@ -466,23 +469,59 @@ def get_movie(url):
 	return player_item, poster
 
 
+
+# animation annotations
+
+def prepare_animation(frames):
+	try:
+		*frames, tail = frames
+	except ValueError:
+		return
+	
+	tail.setShouldDisplay_(False)
+	flags = tail.valueForAnnotationKey_('F')
+	for annotation in frames:
+		annotation.setValue_forAnnotationKey_(frames, 'Frames')
+		annotation.setAction_(PDFActionNamed.alloc().initWithName_(kPDFActionNamedNone))
+		annotation.setShouldDisplay_(False)
+		annotation.setValue_forAnnotationKey_(flags, 'F')
+	frames[0].setShouldDisplay_(True)
+
+def advance_animation(annotation):
+	frames = annotation.valueForAnnotationKey_('Frames')
+	annotation.setShouldDisplay_(False)
+	i = frames.index(annotation)
+	frames[(i+1) % len(frames)].setShouldDisplay_(True)
+	
+
+def process_frames(animation_frames):
+	bounds = None
+	frames = []
+	for frame in animation_frames:
+		if frame.bounds() != bounds:
+			bounds = frame.bounds()
+			prepare_animation(frames)
+			frames = []
+		frames.append(frame)
+	prepare_animation(frames)
+
+
+
 def annotations(page):
 	return page.annotations() or []
 
-def link_or_movie(annotation):
-	return annotation.type() in ['Link', 'Movie']
-
-pdf_notes  = defaultdict(list)
+pdf_notes = defaultdict(list)
 movies = {}
 for page_number in range(page_count):
 	page = pdf.pageAtIndex_(page_number)
+	animation_frames = []
 	for annotation in annotations(page):
-		annotation_type = type(annotation)
-		if annotation_type == PDFAnnotationText:
+		annotation_type = annotation.type()
+		if annotation_type == 'Text':
 			annotation.setShouldDisplay_(False)
 			pdf_notes[page_number].append(annotation.contents().replace('\r', '\n'))
-		elif link_or_movie(annotation):
-			if annotation_type == PDFAnnotationLink:
+		elif annotation_type in ['Link', 'Movie']:
+			if annotation_type == 'Link':
 				movie = get_movie(annotation.URL())
 			else:
 				attrs = annotation.annotationKeyValues()['/Movie']
@@ -492,6 +531,9 @@ for page_number in range(page_count):
 					movie = get_movie(url.URLByDeletingLastPathComponent().URLByAppendingPathComponent_(attrs[k]))
 			if movie:
 				movies[annotation] = movie
+		elif annotation_type == 'Widget':
+			animation_frames.append(annotation)
+	process_frames(animation_frames)
 
 
 # beamer notes
@@ -997,7 +1039,7 @@ class PresenterView(NSView):
 			# links
 			NSColor.blueColor().setFill()
 			for annotation in annotations(self.page):
-				if link_or_movie(annotation):
+				if annotation.type() in ['Link', 'Movie', 'Widget'] and annotation.shouldDisplay():
 					NSFrameRectWithWidth(annotation.bounds(), .5)
 
 		for path, color, size in drawings[page]:
@@ -1162,7 +1204,9 @@ class PresenterView(NSView):
 			return
 		
 		for i, annotation in enumerate(annotations(self.page)):
-			if not link_or_movie(annotation):
+			if annotation.type() not in ['Link', 'Movie', 'Widget']:
+				continue
+			if not annotation.shouldDisplay():
 				continue
 			
 			rect = transform_rect(self.transform, annotation.bounds())
@@ -1443,7 +1487,7 @@ class PresenterView(NSView):
 			next_page()
 			return
 		
-		if not link_or_movie(annotation):
+		if annotation.type() not in ['Link', 'Movie', 'Widget']:
 			return
 		
 		if annotation in movies:
@@ -1468,6 +1512,7 @@ class PresenterView(NSView):
 #				kPDFActionNamedGoToPage:     nop,
 #				kPDFActionNamedFind:         nop,
 #				kPDFActionNamedPrint:        nop,
+				kPDFActionNamedNone:         lambda: advance_animation(annotation),
 			}.get(action_name, nop)
 			action()
 		
