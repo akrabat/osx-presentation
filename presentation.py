@@ -222,13 +222,12 @@ from AppKit import (
 )
 
 from Quartz import (
+	CGShieldingWindowLevel,
 	PDFDocument, PDFActionNamed,
 	kPDFActionNamedNextPage, kPDFActionNamedPreviousPage,
 	kPDFActionNamedFirstPage, kPDFActionNamedLastPage,
 	kPDFActionNamedGoBack, kPDFActionNamedGoForward,
-	kPDFActionNamedNone,
 	kPDFDisplayBoxMediaBox, kPDFDisplayBoxCropBox,
-	CGShieldingWindowLevel,
 )
 
 from WebKit import (
@@ -469,51 +468,93 @@ def get_movie(url):
 	return player_item, poster
 
 
-
 # animation annotations
 
-def prepare_animation(frames):
+# this code relies on pdf structure and naming conventions by the
+# tex animate package: https://ctan.org/pkg/animate
+
+animations = {}
+def prepare_animations(annotations):
+	a = 0
+	while True:
+		k = 'anm%i' % a
+		try:
+			anim = annotations[k]
+		except KeyError:
+			break
+		flags = anim.valueForAnnotationKey_('F')
+		anim.setShouldDisplay_(False)
+		frames = []
+		i = 0
+		while True:
+			try:
+				frame = annotations['%i.%i' % (a, i)]
+			except KeyError:
+				break
+			frame.setValue_forAnnotationKey_(flags, 'F')
+			if i > 0:
+				frame.setShouldDisplay_(False)
+			frames.append(frame)
+			i += 1
+		animations[k] = frames
+		a += 1
+
+def advance_animation(frames, i, step=1):
+	frames[i].setShouldDisplay_(False)
+	i = (i+step) % len(frames)
+	frames[i].setShouldDisplay_(True)
+	refresher.refresh()
+
+def current_frame(frames):
+	for i, f in enumerate(frames):
+		if f.shouldDisplay(): break
+	return i
+
+def step_animation(k, step):
+	frames = animations[k]
+	i = current_frame(frames)
+	advance_animation(frames, i, step)
+	
+def handle_animation(annotation):
+	t = annotation.valueForAnnotationKey_('T')
 	try:
-		*frames, tail = frames
-	except ValueError:
+		a, t = t.split('.')
+		a = int(a)
+	except: # not an animation
 		return
+	frames = animations['anm%i' % a]
+	i = current_frame(frames)
 	
-	tail.setShouldDisplay_(False)
-	flags = tail.valueForAnnotationKey_('F')
-	for annotation in frames:
-		annotation.setValue_forAnnotationKey_(frames, 'Frames')
-		annotation.setAction_(PDFActionNamed.alloc().initWithName_(kPDFActionNamedNone))
-		annotation.setShouldDisplay_(False)
-		annotation.setValue_forAnnotationKey_(flags, 'F')
-	frames[0].setShouldDisplay_(True)
-
-def advance_animation(annotation, step=1):
-	frames = annotation.valueForAnnotationKey_('Frames')
-	annotation.setShouldDisplay_(False)
-	i = frames.index(annotation)
-	frames[(i+step) % len(frames)].setShouldDisplay_(True)
+	if t in ['EndLeft', 'StepLeft', 'StepRight', 'EndRight']:
+		if t == 'EndLeft':
+			step = -i
+		elif t == 'EndRight':
+			step = len(frames)-i-1
+		elif t == 'StepLeft':
+			step = -1
+		elif t == 'StepRight':
+			step = 1
+		advance_animation(frames, i, step)
 	
-def process_frames(animation_frames):
-	bounds = None
-	frames = []
-	for frame in animation_frames:
-		if frame.bounds() != bounds:
-			bounds = frame.bounds()
-			prepare_animation(frames)
-			frames = []
-		frames.append(frame)
-	prepare_animation(frames)
+	elif t in ['PlayPauseLeft', 'PlayPauseRight']: pass
+	elif t in ['PauseLeft', 'PauseRight']:         pass
+	elif t in ['Minus', 'Plus', 'Reset']:          pass
+	else:
+		assert str(i) == t, (i, t)
+		assert frames[i] == annotation
+		advance_animation(frames, i)
 
 
+# scanning annotations for movies and animations
 
 def annotations(page):
 	return page.annotations() or []
 
 pdf_notes = defaultdict(list)
 movies = {}
+widgets = {}
 for page_number in range(page_count):
 	page = pdf.pageAtIndex_(page_number)
-	animation_frames = []
 	for annotation in annotations(page):
 		annotation_type = annotation.type()
 		if annotation_type == 'Text':
@@ -531,8 +572,8 @@ for page_number in range(page_count):
 			if movie:
 				movies[annotation] = movie
 		elif annotation_type == 'Widget':
-			animation_frames.append(annotation)
-	process_frames(animation_frames)
+			widgets[annotation.valueForAnnotationKey_('T')] = annotation
+prepare_animations(widgets)
 
 
 # beamer notes
@@ -1315,15 +1356,12 @@ class PresenterView(NSView):
 		elif c in "<>": # movie navigation
 			step = 1 if c == '>' else -1
 			if movie_view.isHidden():
-				try:
-					annotation = [
-						a
-						for a in annotations(self.page)
-						if a.type() == 'Widget' and a.shouldDisplay()
-					][0]
-				except:
-					return
-				advance_animation(annotation, step)
+				for a in annotations(self.page):
+					if a.type() != 'Widget': continue
+					k = a.valueForAnnotationKey_('T')
+					if k.startswith('anm'):
+						step_animation(k, step)
+						break
 			else:
 				movie_view.stepByCount_(step)
 		
@@ -1506,6 +1544,11 @@ class PresenterView(NSView):
 			return
 		
 		action = annotation.mouseUpAction()
+
+		if annotation.type() == 'Widget':
+			handle_animation(annotation)
+			return
+		
 		destination = annotation.destination()
 		url = annotation.URL()
 		
@@ -1521,10 +1564,8 @@ class PresenterView(NSView):
 #				kPDFActionNamedGoToPage:     nop,
 #				kPDFActionNamedFind:         nop,
 #				kPDFActionNamedPrint:        nop,
-				kPDFActionNamedNone:         lambda: advance_animation(annotation),
 			}.get(action_name, nop)
 			action()
-			refresher.refresh()
 		
 		elif destination:
 			goto_page(pdf.indexForPage_(destination.page()))
