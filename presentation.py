@@ -157,6 +157,7 @@ if len(args) > 1:
 for path in [
 	('..', 'Resources', 'packages'),
 	('packages',),
+	('..', '..', '..', 'packages',),
 ]:
 	sys.path.append(os.path.join(
 		os.path.dirname(os.path.realpath(__file__)), *path))
@@ -328,8 +329,7 @@ if not pdf:
 durations = {}
 _pdf = CGPDFDocumentCreateWithURL(url)
 _page_count = CGPDFDocumentGetNumberOfPages(_pdf)
-assert _page_count == page_count
-for page_number in range(page_count):
+for page_number in range(_page_count):
 	_page = CGPDFDocumentGetPage(_pdf, page_number+1)
 	_dict = CGPDFPageGetDictionary(_page)
 	ok, duration = CGPDFDictionaryGetNumber(_dict, b'Dur', None)
