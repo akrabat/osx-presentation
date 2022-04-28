@@ -322,6 +322,7 @@ if not pdf:
 	exit_usage("'%s' does not seem to be a pdf." % url.path(), 1)
 
 
+
 # structure #################################################################
 
 # durations
@@ -335,6 +336,12 @@ for page_number in range(_page_count):
 	ok, duration = CGPDFDictionaryGetNumber(_dict, b'Dur', None)
 	if ok:
 		durations[page_number] = duration
+
+class PageTurner(NSObject):
+	def turn_(self, timer):
+		next_page()
+		refresher.refresh([slide_view, presenter_view])
+page_turner = PageTurner.alloc().init()
 
 
 # navigation
@@ -354,9 +361,17 @@ past_pages = []
 current_page = max(first_page, min(start_page, last_page))
 future_pages = []
 
+duration_timer = None
 def _goto(page):
 	global current_page
 	current_page = page
+	if page in durations:
+		global duration_timer
+		if duration_timer: duration_timer.invalidate()
+		duration_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+			durations[page],
+			page_turner, 'turn:',
+			nil, NO)
 	presentation_show(slide_view)
 
 def _pop_push_page(pop_pages, push_pages):
@@ -2039,12 +2054,9 @@ class Refresher(NSObject):
 			views = views[:]
 		while views:
 			view = views.pop()
-			subviews = view.subviews()
-			if subviews:
-				for subview in view.subviews():
-					views.append(subview)
-			else:
-				view.setNeedsDisplay_(True)
+			view.setNeedsDisplay_(True)
+			for subview in view.subviews():
+				views.append(subview)
 refresher = Refresher.alloc().init()
 
 refresher_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
