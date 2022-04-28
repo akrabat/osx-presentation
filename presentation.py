@@ -223,6 +223,9 @@ from AppKit import (
 
 from Quartz import (
 	CGShieldingWindowLevel,
+	CGPDFDocumentCreateWithURL,
+	CGPDFDocumentGetNumberOfPages, CGPDFDocumentGetPage,
+	CGPDFPageGetDictionary, CGPDFDictionaryGetNumber,
 	PDFDocument, PDFActionNamed,
 	kPDFActionNamedNextPage, kPDFActionNamedPreviousPage,
 	kPDFActionNamedFirstPage, kPDFActionNamedLastPage,
@@ -312,12 +315,26 @@ else:
 	restarted = True
 
 
-# opening presentation
-
 file_name = url.lastPathComponent()
 pdf = PDFDocument.alloc().initWithURL_(url)
 if not pdf:
 	exit_usage("'%s' does not seem to be a pdf." % url.path(), 1)
+
+
+# structure #################################################################
+
+# durations
+
+durations = {}
+_pdf = CGPDFDocumentCreateWithURL(url)
+_page_count = CGPDFDocumentGetNumberOfPages(_pdf)
+assert _page_count == page_count
+for page_number in range(page_count):
+	_page = CGPDFDocumentGetPage(_pdf, page_number+1)
+	_dict = CGPDFPageGetDictionary(_page)
+	ok, duration = CGPDFDictionaryGetNumber(_dict, b'Dur', None)
+	if ok:
+		durations[page_number] = duration
 
 
 # navigation
@@ -537,7 +554,7 @@ def handle_animation(annotation):
 		advance_animation(k)
 
 
-# scanning annotations for movies and animations
+# scanning annotations for notes, movies and animations
 
 def annotations(page):
 	return page.annotations() or []
@@ -614,7 +631,7 @@ MINIATURES_HEIGHT = origin
 drawings = defaultdict(list)
 
 
-# page drawing ###############################################################
+# page drawing ##############################################################
 
 slide_bbox = NSAffineTransform.transform()
 board_bbox = NSAffineTransform.transform()
@@ -669,7 +686,7 @@ def draw_page(page):
 		)
 
 
-# presentation ###############################################################
+# presentation ##############################################################
 
 def draw_cursor(x, y, iw, ih):
 	cursor_bounds = NSRect()
@@ -896,7 +913,6 @@ class VideoView(NSView):
 	
 	device = None
 	def choose_device(self):
-#		device = AVCaptureDevice.defaultDeviceWithMediaType_(AVMediaTypeVideo)
 		devices = AVCaptureDevice.devicesWithMediaType_(AVMediaTypeVideo)
 		try:
 			device, = devices
@@ -961,7 +977,7 @@ class VideoView(NSView):
 		self.performSelectorOnMainThread_withObject_waitUntilDone_('setHidden:', nil if r else YES, False)
 
 
-# presenter view #############################################################
+# presenter view ############################################################
 
 IDLE, BBOX, SELECT, CLIC, MIN_CLIC, MIN_SCROLL, DRAW, DRAG = range(8)
 
@@ -1699,7 +1715,7 @@ class PresenterView(NSView):
 		refresher.refresh()
 
 
-# application delegate #######################################################
+# application delegate ######################################################
 
 # menus
 
@@ -1849,7 +1865,7 @@ class ApplicationDelegate(NSObject):
 		toggle_fullscreen(fullscreen=True)
 
 
-# window utils ###############################################################
+# window utils ##############################################################
 
 def create_window(title, Window=NSWindow, style=NSMiniaturizableWindowMask|NSResizableWindowMask|NSTitledWindowMask, ratio=None):
 	if ratio is None:
@@ -1886,7 +1902,7 @@ def add_subview(view, subview, autoresizing_mask=NSViewWidthSizable|NSViewHeight
 	view.addSubview_(subview)
 
 
-# presentation window ########################################################
+# presentation window #######################################################
 
 # work around fragile presentation_window.makeFirstResponder_(presenter_view)
 class Window(NSWindow):
@@ -1961,7 +1977,7 @@ toggle_video_view()
 presentation_show()
 
 
-# presenter window ###########################################################
+# presenter window ##########################################################
 
 presenter_window = create_window(file_name)
 presenter_view   = create_view(PresenterView, window=presenter_window)
@@ -1971,7 +1987,7 @@ presenter_window.makeFirstResponder_(presenter_view)
 presentation_window.makeFirstResponder_(presenter_view)
 
 
-# handling full screens ######################################################
+# handling full screens #####################################################
 
 _switched_screens = False
 
@@ -2002,7 +2018,7 @@ def toggle_fullscreen(fullscreen=None):
 	return _fullscreen
 
 
-# main loop ##################################################################
+# main loop #################################################################
 
 application_delegate = ApplicationDelegate.alloc().init()
 app.setDelegate_(application_delegate)
