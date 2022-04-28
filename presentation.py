@@ -499,22 +499,16 @@ def prepare_animations(annotations):
 		animations[k] = frames
 		a += 1
 
-def advance_animation(frames, i, step=1):
-	frames[i].setShouldDisplay_(False)
-	i = (i+step) % len(frames)
-	frames[i].setShouldDisplay_(True)
+def advance_animation(k, step=1, target=None):
+	frames = animations[k]
+	for current, f in enumerate(frames):
+		if f.shouldDisplay(): break
+	frames[current].setShouldDisplay_(False)
+	if target is None:
+		target = (current+step) % len(frames)
+	frames[target].setShouldDisplay_(True)
 	refresher.refresh()
 
-def current_frame(frames):
-	for i, f in enumerate(frames):
-		if f.shouldDisplay(): break
-	return i
-
-def step_animation(k, step):
-	frames = animations[k]
-	i = current_frame(frames)
-	advance_animation(frames, i, step)
-	
 def handle_animation(annotation):
 	t = annotation.valueForAnnotationKey_('T')
 	try:
@@ -522,27 +516,25 @@ def handle_animation(annotation):
 		a = int(a)
 	except: # not an animation
 		return
-	frames = animations['anm%i' % a]
-	i = current_frame(frames)
+	k = 'anm%i' % a
+	step, target = None, None
 	
 	if t in ['EndLeft', 'StepLeft', 'StepRight', 'EndRight']:
 		if t == 'EndLeft':
-			step = -i
+			target = 0
 		elif t == 'EndRight':
-			step = len(frames)-i-1
+			target = -1
 		elif t == 'StepLeft':
 			step = -1
 		elif t == 'StepRight':
 			step = 1
-		advance_animation(frames, i, step)
+		advance_animation(k, step, target)
 	
 	elif t in ['PlayPauseLeft', 'PlayPauseRight']: pass
 	elif t in ['PauseLeft', 'PauseRight']:         pass
 	elif t in ['Minus', 'Plus', 'Reset']:          pass
 	else:
-		assert str(i) == t, (i, t)
-		assert frames[i] == annotation
-		advance_animation(frames, i)
+		advance_animation(k)
 
 
 # scanning annotations for movies and animations
@@ -1360,7 +1352,7 @@ class PresenterView(NSView):
 					if a.type() != 'Widget': continue
 					k = a.valueForAnnotationKey_('T')
 					if k.startswith('anm'):
-						step_animation(k, step)
+						advance_animation(k, step)
 						break
 			else:
 				movie_view.stepByCount_(step)
