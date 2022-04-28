@@ -343,6 +343,18 @@ class PageTurner(NSObject):
 		refresher.refresh([slide_view, presenter_view])
 page_turner = PageTurner.alloc().init()
 
+duration_timer = None
+def handle_duration(page):
+	if page not in durations:
+		return
+	global duration_timer
+	if duration_timer:
+		duration_timer.invalidate()
+	duration_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+		durations[page],
+		page_turner, 'turn:',
+		nil, NO)
+
 
 # navigation
 
@@ -361,17 +373,10 @@ past_pages = []
 current_page = max(first_page, min(start_page, last_page))
 future_pages = []
 
-duration_timer = None
 def _goto(page):
 	global current_page
 	current_page = page
-	if page in durations:
-		global duration_timer
-		if duration_timer: duration_timer.invalidate()
-		duration_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-			durations[page],
-			page_turner, 'turn:',
-			nil, NO)
+	handle_duration(page)
 	presentation_show(slide_view)
 
 def _pop_push_page(pop_pages, push_pages):
