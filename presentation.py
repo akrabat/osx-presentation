@@ -2039,9 +2039,12 @@ class Refresher(NSObject):
 			views = views[:]
 		while views:
 			view = views.pop()
-			view.setNeedsDisplay_(True)
-			for subview in view.subviews():
-				views.append(subview)
+			subviews = view.subviews()
+			if subviews:
+				for subview in view.subviews():
+					views.append(subview)
+			else:
+				view.setNeedsDisplay_(True)
 refresher = Refresher.alloc().init()
 
 refresher_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
