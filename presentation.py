@@ -355,7 +355,7 @@ for page_number in range(_page_count):
 class PageTurner(NSObject):
 	def turn_(self, timer):
 		next_page()
-		refresher.refresh([slide_view, presenter_view])
+		refresher.refresh()
 page_turner = PageTurner.alloc().init()
 
 _auto_turn = False
@@ -607,8 +607,10 @@ def advance_animation(k, step=1, target=None):
 	for current, f in enumerate(frames):
 		if f.shouldDisplay(): break
 	frames[current].setShouldDisplay_(False)
-	if target is None:
-		target = (current+step) % len(frames)
+	if target is None: target = current + step
+	elif target < 0:   target += len(frames)
+	if target >= len(frames): target = -1
+	elif target < 0:          target = 0
 	frames[target].setShouldDisplay_(True)
 	refresher.refresh()
 
