@@ -53,7 +53,6 @@ HELP = [
 	(        "?", "show/hide this help"),
 	(    "h/q/r", "hide/quit/relaunch"),
 	(   "f/F5/⎋", "toggle/enter/leave fullscreen"),
-	(        "x", "switch screens"),
 	("./b/w/m/s", "toggle black/board/web/movie/slide view"),
 	(      "v/c", "show/hide video view/color picker"),
 	(    "←|↑|⇞", "previous page"),
@@ -62,16 +61,19 @@ HELP = [
 	(     "⌘↑/↓", "previous/next frame"),
 	(     "⌘⇞/⇟", "previous/next section"),
 	(      "↖/↘", "first/last page"),
+	(    "space", "toggle page transitions (if any)"),
+	(         "", "play/pause movie (if in movie view)"),
+	(         "", "start or stop timer (other cases)"),
+	(        "t", "start or stop timer"),
 	(        "z", "set origin for timer"),
 	(      "[/]", "sub/add  1 minute to planned time"),
 	(      "{/}", "sub/add 10 minutes"),
-	(    "+/-/0", "zoom in/out/reset speaker notes or web view"),
-	(  "t|space", "start or stop timer"),
-	(    "space", "play/pause movie (in movie view)"),
 	("&lt;/&gt;", "step movie/animation backward/forward"),
+	(    "+/-/0", "zoom in/out/reset speaker notes or web view"),
 	(        "l", "toggle spotlight"),
 	(      "p/P", "reduce/augment pointer/spotlight size"),
 	(        "e", "erase on-screen annotations"),
+	(        "x", "switch screens"),
 ]
 
 def nop(): pass
@@ -343,9 +345,10 @@ class PageTurner(NSObject):
 		refresher.refresh([slide_view, presenter_view])
 page_turner = PageTurner.alloc().init()
 
+_auto_turn = False
 duration_timer = None
 def handle_duration(page):
-	if page not in durations:
+	if not _auto_turn or page not in durations:
 		return
 	global duration_timer
 	if duration_timer:
@@ -354,6 +357,14 @@ def handle_duration(page):
 		durations[page],
 		page_turner, 'turn:',
 		nil, NO)
+
+def toggle_auto_turn(auto_turn=None):
+	global _auto_turn
+	if auto_turn is None:
+		_auto_turn = not _auto_turn
+	else:
+		_auto_turn = auto_turn
+	handle_duration(current_page)
 
 
 # navigation
@@ -1372,8 +1383,11 @@ class PresenterView(NSView):
 			self.show_help = not self.show_help
 		
 		elif c == ' ': # play/pause video
-			if movie_view.isHidden(): # or toggle timer
-				send('t')
+			if movie_view.isHidden(): # or...
+				if current_page in durations: # toggle auto page turn
+					toggle_auto_turn()
+				else:                         # or toggle timer
+					send('t')
 				return
 			
 			if movie_view.isPlaying():
@@ -1497,7 +1511,7 @@ class PresenterView(NSView):
 					NSPageUpFunctionKey:     prev_section,
 					NSPageDownFunctionKey:   next_section,
 				})
-			
+			toggle_auto_turn(False)
 			action = actions.get(c, nop)
 			action()
 		
