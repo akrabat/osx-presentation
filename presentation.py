@@ -641,11 +641,15 @@ def advance_animation(k, step=1, target=None):
 	frames[target].setShouldDisplay_(True)
 	
 	# auto play
+	try:
+		step, fps = animations_state[k]
+	except:
+		return
+	
 	global animation_timer
 	if animation_timer:
 		animation_timer.invalidate()
 
-	step, fps = animations_state[k]
 	if step == 0:
 		return
 	if (step < 0 and target == 0) or \
