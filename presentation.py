@@ -19,11 +19,9 @@ import getopt
 import textwrap
 import mimetypes
 import base64
-import warnings
 
 from math import exp, hypot
 from collections import defaultdict
-from ctypes import c_char_p
 
 
 # constants and helpers #####################################################
@@ -179,7 +177,7 @@ except ImportError:
 	
 setVerbose(1)
 
-from objc import nil, NO, YES, ObjCPointerWarning
+from objc import nil, NO, YES
 
 from Foundation import (
 	NSLog, NSNotificationCenter, NSUserDefaults, NSAffineTransform,
@@ -229,15 +227,11 @@ from AppKit import (
 from Quartz import (
 	CGShieldingWindowLevel,
 	CGPDFDocumentCreateWithURL,
-	CGPDFDocumentGetNumberOfPages, CGPDFDocumentGetPage,
-	CGPDFPageGetDictionary,
-	CGPDFDictionaryGetNumber, CGPDFDictionaryGetArray,
-	CGPDFDictionaryGetDictionary, CGPDFDictionaryGetName,
-	CGPDFDictionaryGetObject, CGPDFDictionaryApplyFunction,
-	CGPDFArrayGetCount, CGPDFArrayGetDictionary,
-	CGPDFObjectGetValue, CGPDFObjectGetType,
-	CGPDFStreamGetDictionary, CGPDFStreamCopyData,
-	kCGPDFObjectTypeStream, CGPDFDataFormatRaw,
+	CGPDFDocumentGetNumberOfPages, CGPDFDocumentGetPage, CGPDFPageGetDictionary,
+	CGPDFDictionaryRef, CGPDFArrayRef, CGPDFStreamRef,
+	CGPDFDictionaryGetObject, CGPDFArrayGetCount, CGPDFArrayGetObject,
+	CGPDFObjectGetType, CGPDFObjectGetValue,
+	CGPDFStreamGetDictionary, CGPDFStreamCopyData, CGPDFDataFormatRaw,
 	PDFDocument, PDFActionNamed,
 	kPDFActionNamedNextPage, kPDFActionNamedPreviousPage,
 	kPDFActionNamedFirstPage, kPDFActionNamedLastPage,
@@ -341,6 +335,42 @@ if not pdf:
 _pdf = CGPDFDocumentCreateWithURL(url)
 _page_count = CGPDFDocumentGetNumberOfPages(_pdf)
 
+def cgpdf_array2list(a):
+	return list(
+		cgpdf_get(a, i)
+		for i in range(CGPDFArrayGetCount(a))
+	)
+
+def cgpdf_stream2data(s):
+	data, fmt = CGPDFStreamCopyData(s, None)
+	if fmt != CGPDFDataFormatRaw:
+		raise TypeError('unsupported data format: %s' % fmt)
+	return data
+
+def cgpdf_get(data, *path):
+	"""walk the pdf dict/array structure"""
+	try:
+		head, *path = path
+	except:
+		formatter = {
+			CGPDFArrayRef:  cgpdf_array2list,
+			CGPDFStreamRef:	cgpdf_stream2data,
+		}.get(data.__class__, lambda d: d)
+		return formatter(data)
+	
+	getter = {
+		CGPDFDictionaryRef: CGPDFDictionaryGetObject,
+		CGPDFArrayRef:      CGPDFArrayGetObject,
+		CGPDFStreamRef:     lambda s: CGPDFDictionaryGetObject(CGPDFStreamGetDictionary(s)),
+	}[data.__class__]
+	ok, o = getter(data, head, None)
+	if not ok:
+		raise LookupError('wrong key %s in %s' % (head, data))
+	ok, value = CGPDFObjectGetValue(o, CGPDFObjectGetType(o), None)
+	if not ok:
+		raise TypeError('unable to cast %s into %s' % (o, CGPDFObjectGetType(o)))
+	return cgpdf_get(value, *path)
+
 
 # durations of pages
 
@@ -348,9 +378,10 @@ durations = {}
 for page_number in range(_page_count):
 	_page = CGPDFDocumentGetPage(_pdf, page_number+1)
 	_dict = CGPDFPageGetDictionary(_page)
-	ok, duration = CGPDFDictionaryGetNumber(_dict, b'Dur', None)
-	if ok:
-		durations[page_number] = duration
+	try:
+		durations[page_number] = cgpdf_get(_dict, b'Dur')
+	except LookupError:
+		pass
 
 class PageTurner(NSObject):
 	def turn_(self, timer):
@@ -546,38 +577,23 @@ def parse_fps(data):
 	a, fps = int(a[1:]), int(fps)
 	animations_state['anm%i' % a] = (0, fps)
 
-def find_fps(annots):
-	with warnings.catch_warnings():
-		warnings.filterwarnings('ignore', category=ObjCPointerWarning)
-		for i in range(CGPDFArrayGetCount(annots)):
-			ok, annot = CGPDFArrayGetDictionary(annots, i, None)
-			if not ok: continue
-			ok, subtype = CGPDFDictionaryGetName(annot, b'Subtype', None)
-			if not ok: continue
-			if c_char_p(subtype.pointerAsInteger).value != b'Screen': continue
-			ok, aa = CGPDFDictionaryGetDictionary(annot, b'AA', None)
-			if not ok: continue
-			ok, po = CGPDFDictionaryGetDictionary(aa, b'PO', None)
-			if not ok: continue
-			ok, js = CGPDFDictionaryGetObject(po, b'JS', None)
-			if not ok: continue
-			assert CGPDFObjectGetType(js) == kCGPDFObjectTypeStream
-			ok, js_stream = CGPDFObjectGetValue(js, kCGPDFObjectTypeStream, None)
-			if not ok: continue
-			js_dict = CGPDFStreamGetDictionary(js_stream)
-			data, fmt = CGPDFStreamCopyData(js_stream, None)
-			if fmt != CGPDFDataFormatRaw: continue
-			parse_fps(data)
-
 for page_number in range(_page_count):
 	_page = CGPDFDocumentGetPage(_pdf, page_number+1)
 	_dict = CGPDFPageGetDictionary(_page)
-	ok, annots = CGPDFDictionaryGetArray(_dict, b'Annots', None)
-	if ok:
-		find_fps(annots)
+	for annot in cgpdf_get(_dict, b'Annots'):
+		if cgpdf_get(annot, b'Subtype') != 'Screen':
+			continue
+		js = cgpdf_get(annot, b'AA', b'PO', b'JS')
+		parse_fps(js)
 
 animations = {}
 def prepare_animations(annotations):
+	for k in annotations:
+		if 'Pause' in k:
+			annot = annotations[k]
+			annot.setValue_forAnnotationKey_(4, 'F')
+			annot.setShouldDisplay_(False)
+	
 	a = 0
 	while True:
 		k = 'anm%i' % a
@@ -606,6 +622,7 @@ class AnimationPlayer(NSObject):
 	def play_(self, timer):
 		k, step = timer.userInfo()
 		advance_animation(k, step)
+		refresher.refresh()
 
 animation_player = AnimationPlayer.alloc().init()
 
@@ -622,7 +639,6 @@ def advance_animation(k, step=1, target=None):
 	if target >= l:  target = -1
 	elif target < 0: target = 0
 	frames[target].setShouldDisplay_(True)
-	refresher.refresh()
 	
 	# auto play
 	global animation_timer
@@ -630,10 +646,13 @@ def advance_animation(k, step=1, target=None):
 		animation_timer.invalidate()
 
 	step, fps = animations_state[k]
+	if step == 0:
+		return
 	if (step < 0 and target == 0) or \
-	   step == 0 or \
 	   (step > 0 and target == -1):
-		animations_state[k] = 0, fps
+		a = int(k[len('anm'):])
+		d = {-1: 'Left', 1: 'Right'}[step]
+		handle_animation(widgets['%i.Pause%s' % (a, d)])
 		return
 	
 	animation_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
@@ -661,19 +680,31 @@ def handle_animation(annotation):
 		}[t]
 		advance_animation(k, step, target)
 	
-	elif t in ['PlayPauseLeft', 'PlayPauseRight']:
+	elif t in ['PlayLeft', 'PlayRight']:
 		step = {
-			'PlayPauseLeft':  -1,
-			'PlayPauseRight':  1,
+			'PlayLeft':  -1,
+			'PlayRight':  1,
 		}[t]
 		_, fps = animations_state[k]
 		animations_state[k] = step, fps
 		advance_animation(k, 0)
+		for d in ['Left', 'Right']:
+			widgets['%i.Play%s' % (a, d)].setShouldDisplay_(False)
+			widgets['%i.Pause%s' % (a, d)].setShouldDisplay_(True)
 	
-	elif t in ['PauseLeft', 'PauseRight']:         pass
+	elif t in ['PauseLeft', 'PauseRight']:
+		_, fps = animations_state[k]
+		animations_state[k] = 0, fps
+		advance_animation(k, 0)
+		for d in ['Left', 'Right']:
+			widgets['%i.Pause%s' % (a, d)].setShouldDisplay_(False)
+			widgets['%i.Play%s' % (a, d)].setShouldDisplay_(True)
+
+	elif t in ['PlayPauseLeft', 'PlayPauseRight']: pass
 	elif t in ['Minus', 'Plus', 'Reset']:          pass
 	else:
 		advance_animation(k)
+	refresher.refresh()
 
 
 # scanning annotations for notes, movies and animations
