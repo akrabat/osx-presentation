@@ -228,10 +228,11 @@ from Quartz import (
 	CGShieldingWindowLevel,
 	CGPDFDocumentCreateWithURL,
 	CGPDFDocumentGetNumberOfPages, CGPDFDocumentGetPage, CGPDFPageGetDictionary,
-	CGPDFDictionaryRef, CGPDFArrayRef, CGPDFStreamRef,
+	CGPDFDictionaryRef, CGPDFArrayRef, CGPDFStreamRef, CGPDFStringRef,
 	CGPDFDictionaryGetObject, CGPDFArrayGetCount, CGPDFArrayGetObject,
 	CGPDFObjectGetType, CGPDFObjectGetValue,
 	CGPDFStreamGetDictionary, CGPDFStreamCopyData, CGPDFDataFormatRaw,
+	CGPDFStringCopyTextString,
 	PDFDocument, PDFActionNamed,
 	kPDFActionNamedNextPage, kPDFActionNamedPreviousPage,
 	kPDFActionNamedFirstPage, kPDFActionNamedLastPage,
@@ -341,11 +342,11 @@ def cgpdf_array2list(a):
 		for i in range(CGPDFArrayGetCount(a))
 	)
 
-def cgpdf_stream2data(s):
+def cgpdf_stream2str(s):
 	data, fmt = CGPDFStreamCopyData(s, None)
 	if fmt != CGPDFDataFormatRaw:
 		raise TypeError('unsupported data format: %s' % fmt)
-	return data
+	return data.decode()
 
 def cgpdf_get(data, *path):
 	"""walk the pdf dict/array structure"""
@@ -354,7 +355,8 @@ def cgpdf_get(data, *path):
 	except:
 		formatter = {
 			CGPDFArrayRef:  cgpdf_array2list,
-			CGPDFStreamRef:	cgpdf_stream2data,
+			CGPDFStreamRef:	cgpdf_stream2str,
+			CGPDFStringRef: CGPDFStringCopyTextString,
 		}.get(data.__class__, lambda d: d)
 		return formatter(data)
 	
@@ -567,20 +569,23 @@ def get_movie(url):
 # https://ctan.org/pkg/animate
 
 animations_state = {}
-def parse_fps(data):
-	i = data.find(b'_fps=')
+def parse_fps(js):
+	i = js.find('_fps=')
 	if i < 0: return
-	b, e = data.rfind(b';', 0, i), data.find(b';', i)
-	assert b < i < e
-	a, _, fps = data[b+1:e].tobytes().partition(b'_fps=')
-	assert a[0] == ord('a')
-	a, fps = int(a[1:]), int(fps)
+	b, e = js.rfind(';', 0, i), js.find(';', i)
+	a, _, fps = js[b+1:e].partition('_fps=')
+	assert a[0] == 'a'
+	a, fps = int(a[len('a'):]), int(fps)
 	animations_state['anm%i' % a] = (0, fps)
 
 for page_number in range(_page_count):
 	_page = CGPDFDocumentGetPage(_pdf, page_number+1)
 	_dict = CGPDFPageGetDictionary(_page)
-	for annot in cgpdf_get(_dict, b'Annots'):
+	try:
+		annotations = cgpdf_get(_dict, b'Annots')
+	except LookupError:
+		continue
+	for annot in annotations:
 		if cgpdf_get(annot, b'Subtype') != 'Screen':
 			continue
 		js = cgpdf_get(annot, b'AA', b'PO', b'JS')
