@@ -588,7 +588,10 @@ for page_number in range(_page_count):
 	for annot in annotations:
 		if cgpdf_get(annot, b'Subtype') != 'Screen':
 			continue
-		js = cgpdf_get(annot, b'AA', b'PO', b'JS')
+		try:
+			js = cgpdf_get(annot, b'AA', b'PO', b'JS')
+		except LookupError:
+			continue
 		parse_fps(js)
 
 animations = {}
