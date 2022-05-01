@@ -228,6 +228,7 @@ from Quartz import (
 	CGShieldingWindowLevel,
 	CGPDFDocumentCreateWithURL,
 	CGPDFDocumentGetNumberOfPages, CGPDFDocumentGetPage, CGPDFPageGetDictionary,
+	CGPDFDictionaryApplyFunction,
 	CGPDFDictionaryRef, CGPDFArrayRef, CGPDFStreamRef, CGPDFStringRef,
 	CGPDFDictionaryGetObject, CGPDFArrayGetCount, CGPDFArrayGetObject,
 	CGPDFObjectGetType, CGPDFObjectGetValue,
@@ -336,6 +337,11 @@ if not pdf:
 _pdf = CGPDFDocumentCreateWithURL(url)
 _page_count = CGPDFDocumentGetNumberOfPages(_pdf)
 
+def cgpdf_dictionary2dict(d):
+	res = {}
+	CGPDFDictionaryApplyFunction(d, lambda k, v, _: res.update({k.decode(): v}), None)
+	return res
+
 def cgpdf_array2list(a):
 	return list(
 		cgpdf_get(a, i)
@@ -354,9 +360,10 @@ def cgpdf_get(data, *path):
 		head, *path = path
 	except:
 		formatter = {
-			CGPDFArrayRef:  cgpdf_array2list,
-			CGPDFStreamRef:	cgpdf_stream2str,
-			CGPDFStringRef: CGPDFStringCopyTextString,
+#			CGPDFDictionaryRef: cgpdf_dictionary2dict,
+#			CGPDFArrayRef:      cgpdf_array2list,
+			CGPDFStreamRef:	    cgpdf_stream2str,
+			CGPDFStringRef:     CGPDFStringCopyTextString,
 		}.get(data.__class__, lambda d: d)
 		return formatter(data)
 	
@@ -365,6 +372,10 @@ def cgpdf_get(data, *path):
 		CGPDFArrayRef:      CGPDFArrayGetObject,
 		CGPDFStreamRef:     lambda s: CGPDFDictionaryGetObject(CGPDFStreamGetDictionary(s)),
 	}[data.__class__]
+	try:
+		head = head.encode()
+	except:
+		pass
 	ok, o = getter(data, head, None)
 	if not ok:
 		raise LookupError('wrong key %s in %s' % (head, data))
@@ -381,7 +392,7 @@ for page_number in range(_page_count):
 	_page = CGPDFDocumentGetPage(_pdf, page_number+1)
 	_dict = CGPDFPageGetDictionary(_page)
 	try:
-		durations[page_number] = cgpdf_get(_dict, b'Dur')
+		durations[page_number] = cgpdf_get(_dict, 'Dur')
 	except LookupError:
 		pass
 
@@ -582,14 +593,15 @@ for page_number in range(_page_count):
 	_page = CGPDFDocumentGetPage(_pdf, page_number+1)
 	_dict = CGPDFPageGetDictionary(_page)
 	try:
-		annotations = cgpdf_get(_dict, b'Annots')
+		annotations = cgpdf_get(_dict, 'Annots')
 	except LookupError:
 		continue
-	for annot in annotations:
-		if cgpdf_get(annot, b'Subtype') != 'Screen':
+	for annot in cgpdf_array2list(annotations):
+		if cgpdf_get(annot, 'Subtype') != 'Screen':
 			continue
+
 		try:
-			js = cgpdf_get(annot, b'AA', b'PO', b'JS')
+			js = cgpdf_get(annot, 'AA', 'PO', 'JS')
 		except LookupError:
 			continue
 		parse_fps(js)
