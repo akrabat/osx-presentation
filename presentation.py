@@ -609,7 +609,6 @@ def parse_fps(js):
 	a, _, fps = js[b+1:e-de].partition(sep)
 	assert a[0] == 'a'
 	a, fps = int(a[len('a'):]), int(fps)
-	print(a, fps)
 	animations_state['anm%i' % a] = (0, fps)
 
 animations = {}
