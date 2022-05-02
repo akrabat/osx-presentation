@@ -592,19 +592,31 @@ def get_movie(url):
 
 animations_state = {}
 def parse_fps(js):
-	js = js.decode()
-	i = js.find('_fps=')
-	if i < 0: return
+	try:
+		js = js.decode()
+	except AttributeError:
+		pass
+	for sep, de in [
+		('_fps=',                    0),
+		('.dt=1000/(1e-6+Math.abs(', 2),
+	]:
+		i = js.find(sep)
+		if i >= 0:
+			break
+	else:
+		return
 	b, e = js.rfind(';', 0, i), js.find(';', i)
-	a, _, fps = js[b+1:e].partition('_fps=')
+	a, _, fps = js[b+1:e-de].partition(sep)
 	assert a[0] == 'a'
 	a, fps = int(a[len('a'):]), int(fps)
+	print(a, fps)
 	animations_state['anm%i' % a] = (0, fps)
 
 animations = {}
 def prepare_animations(annotations):
 	for k in annotations:
-		if 'Pause' in k:
+		if 'PlayPause' in k and k.replace('PlayPause', 'Play') in annotations or \
+		   'PlayPause' not in k and 'Pause' in k:
 			annot = annotations[k]
 			annot.setValue_forAnnotationKey_(4, 'F')
 			annot.setShouldDisplay_(False)
@@ -671,7 +683,12 @@ def advance_animation(k, step=1, target=None):
 	   (step > 0 and target == -1):
 		a = int(k[len('anm'):])
 		d = {-1: 'Left', 1: 'Right'}[step]
-		handle_animation(widgets['%i.Pause%s' % (a, d)])
+		try:
+			pause = widgets['%i.Pause%s' % (a, d)]
+		except KeyError:
+			pass
+		else:
+			handle_animation(pause)
 		return
 	
 	animation_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
@@ -682,6 +699,8 @@ def advance_animation(k, step=1, target=None):
 
 def handle_animation(annotation):
 	t = annotation.valueForAnnotationKey_('T')
+	if t.startswith('btn@'):
+		t = t[len('btn@'):].replace('@', '.')
 	try:
 		a, t = t.split('.')
 		a = int(a)
@@ -719,7 +738,17 @@ def handle_animation(annotation):
 			widgets['%i.Pause%s' % (a, d)].setShouldDisplay_(False)
 			widgets['%i.Play%s' % (a, d)].setShouldDisplay_(True)
 
-	elif t in ['PlayPauseLeft', 'PlayPauseRight']: pass
+	elif t in ['PlayPauseLeft', 'PlayPauseRight']:
+		step = {
+			'PlayPauseLeft':  -1,
+			'PlayPauseRight':  1,
+		}[t]
+		_step, fps = animations_state[k]
+		if _step == step:
+			step = 0
+		animations_state[k] = step, fps
+		advance_animation(k, 0)
+		
 	elif t in ['Minus', 'Plus', 'Reset']:          pass
 	else:
 		advance_animation(k)
@@ -767,7 +796,7 @@ for page_number in range(_page_count):
 			movie_filename = cgpdf_get(annot, 'Movie', 'F')
 			add_movie_pdfannotationlink(page_number, annot, movie_filename)
 		
-		elif subtype == 'Screen':
+		elif subtype in ['Screen', 'Widget']:
 			try:
 				po = cgpdf_get(annot, 'AA', 'PO')
 			except LookupError:
