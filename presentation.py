@@ -262,7 +262,7 @@ NSEC_PER_SEC = 1000000000
 _s = NSString.stringWithString_
 def _e(result): # some binding version returns tuple with error
 	result, error = result
-	if error: raise error
+	if error: raise RuntimeError(error)
 	return result
 
 def _h(s):
@@ -576,10 +576,13 @@ def get_movie(url):
 		return
 	
 	image_generator = AVAssetImageGenerator.assetImageGeneratorWithAsset_(asset)
-	image_ref = _e(image_generator.copyCGImageAtTime_actualTime_error_(
-		(0, 1, 1, 0), None, None,
-	))
-	poster = NSImage.alloc().initWithCGImage_size_(image_ref, (0, 0))
+	try:
+		image_ref = _e(image_generator.copyCGImageAtTime_actualTime_error_(
+			(0, 1, 1, 0), None, None,
+		))
+		poster = NSImage.alloc().initWithCGImage_size_(image_ref, (0, 0))
+	except:
+		poster = None
 	return player_item, poster
 
 
