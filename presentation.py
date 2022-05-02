@@ -600,6 +600,16 @@ def parse_fps(js):
 	a, fps = int(a[len('a'):]), int(fps)
 	animations_state['anm%i' % a] = (0, fps)
 
+def add_movie_pdfannotationlink(page_number, movie_filename, rect):
+	x0, y0, x1, y1 = rect
+	pdf_annotation = PDFAnnotation.alloc().initWithBounds_forType_withProperties_(
+		((x0, y0), (x1-x0, y1-y0)),
+		'Link',
+		None
+	)
+	pdf_annotation.setURL_(NSURL.fileURLWithPath_(movie_filename))
+	pdf.pageAtIndex_(page_number).addAnnotation_(pdf_annotation)
+
 for page_number in range(_page_count):
 	_page = CGPDFDocumentGetPage(_pdf, page_number+1)
 	_dict = CGPDFPageGetDictionary(_page)
@@ -608,37 +618,34 @@ for page_number in range(_page_count):
 	except LookupError:
 		continue
 	for annot in cgpdf_array2list(annotations):
-		if cgpdf_get(annot, 'Subtype') != 'Screen':
-			continue
-
-		try:
-			po = cgpdf_get(annot, 'AA', 'PO')
-		except LookupError:
-			continue
+		subtype = cgpdf_get(annot, 'Subtype')
+		if subtype == 'Movie':
+			movie_filename = cgpdf_get(annot, 'Movie', 'F')
+			rect = cgpdf_array2list(cgpdf_get(annot, 'Rect'))
+			add_movie_pdfannotationlink(page_number, movie_filename, rect)
 		
-		s = cgpdf_get(po, 'S')
-		if s == 'JavaScript':
-			parse_fps(cgpdf_get(po, 'JS'))
-		elif s == 'Rendition':
-			r = cgpdf_get(po, 'R')
-			if cgpdf_get(r, 'S') != 'MR':
+		if subtype == 'Screen':
+			try:
+				po = cgpdf_get(annot, 'AA', 'PO')
+			except LookupError:
 				continue
-			c = cgpdf_get(r, 'C')
-			if cgpdf_get(c, 'S') != 'MCD':
-				continue
-			d = cgpdf_get(po, 'R', 'C', 'D')
-			movie_filename = os.path.join(TMP_DIR_PATH, os.path.basename(cgpdf_get(d, 'F')))
-			with open(movie_filename, 'bw') as movie:
-				movie.write(cgpdf_get(d, 'EF', 'F'))
-			x, y, w, h = cgpdf_array2list(cgpdf_get(annot, 'Rect'))
-			pdf_annotation = PDFAnnotation.alloc().initWithBounds_forType_withProperties_(
-				((x, y), (w, h)),
-				'Link',
-				None
-			)
-			pdf_annotation.setURL_(NSURL.fileURLWithPath_(movie_filename))
-			pdf.pageAtIndex_(page_number).addAnnotation_(pdf_annotation)
 			
+			po_subtype = cgpdf_get(po, 'S')
+
+			if po_subtype == 'JavaScript': # animate fps info?
+				parse_fps(cgpdf_get(po, 'JS'))
+			
+			elif po_subtype == 'Rendition': # embedded movie?
+				r = cgpdf_get(po, 'R')
+				if cgpdf_get(r, 'S') != 'MR': continue
+				c = cgpdf_get(r, 'C')
+				if cgpdf_get(c, 'S') != 'MCD': continue
+				d = cgpdf_get(po, 'R', 'C', 'D')
+				movie_filename = os.path.join(TMP_DIR_PATH, os.path.basename(cgpdf_get(d, 'F')))
+				with open(movie_filename, 'bw') as movie:
+					movie.write(cgpdf_get(d, 'EF', 'F'))
+				rect = cgpdf_array2list(cgpdf_get(annot, 'Rect'))
+				add_movie_pdfannotationlink(page_number, movie_filename, rect)
 
 animations = {}
 def prepare_animations(annotations):
@@ -780,20 +787,13 @@ for page_number in range(page_count):
 		if annotation_type == 'Text':
 			annotation.setShouldDisplay_(False)
 			pdf_notes[page_number].append(annotation.contents().replace('\r', '\n'))
-		elif annotation_type in ['Link', 'Movie']:
-			if annotation_type == 'Link':
-				movie = get_movie(annotation.URL())
-			else:
-				attrs = annotation.valueForAnnotationKey_('Movie')
-				movie = None
-				for k in attrs:
-					if str(k) != '<CGPDFNameRef (/F)>': continue
-					movie = get_movie(url.URLByDeletingLastPathComponent().URLByAppendingPathComponent_(attrs[k]))
+		elif annotation_type == 'Link':
+			movie = get_movie(annotation.URL())
 			if movie:
 				movies[annotation] = movie
 		elif annotation_type == 'Widget':
 			widgets[annotation.valueForAnnotationKey_('T')] = annotation
-		elif annotation_type in ['Screen', 'FileAttachment']:
+		elif annotation_type in ['Movie', 'Screen', 'FileAttachment']:
 			page.removeAnnotation_(annotation)
 prepare_animations(widgets)
 
