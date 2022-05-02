@@ -19,6 +19,8 @@ import getopt
 import textwrap
 import mimetypes
 import base64
+import tempfile
+import atexit
 
 from math import exp, hypot
 from collections import defaultdict
@@ -234,7 +236,7 @@ from Quartz import (
 	CGPDFObjectGetType, CGPDFObjectGetValue,
 	CGPDFStreamGetDictionary, CGPDFStreamCopyData, CGPDFDataFormatRaw,
 	CGPDFStringCopyTextString,
-	PDFDocument, PDFActionNamed,
+	PDFDocument, PDFAnnotation, PDFActionNamed,
 	kPDFActionNamedNextPage, kPDFActionNamedPreviousPage,
 	kPDFActionNamedFirstPage, kPDFActionNamedLastPage,
 	kPDFActionNamedGoBack, kPDFActionNamedGoForward,
@@ -329,6 +331,14 @@ if not pdf:
 	exit_usage("'%s' does not seem to be a pdf." % url.path(), 1)
 
 
+# tmp dir for embedded movies
+
+TMP_DIR_PATH = tempfile.mkdtemp(prefix='%s-' % ID)
+def cleanup_tmp():
+	for p in os.listdir(TMP_DIR_PATH):
+		os.remove(os.path.join(TMP_DIR_PATH, p))
+	os.rmdir(TMP_DIR_PATH)
+
 
 # structure #################################################################
 
@@ -352,7 +362,7 @@ def cgpdf_stream2str(s):
 	data, fmt = CGPDFStreamCopyData(s, None)
 	if fmt != CGPDFDataFormatRaw:
 		raise TypeError('unsupported data format: %s' % fmt)
-	return data.decode()
+	return data
 
 def cgpdf_get(data, *path):
 	"""walk the pdf dict/array structure"""
@@ -370,7 +380,7 @@ def cgpdf_get(data, *path):
 	getter = {
 		CGPDFDictionaryRef: CGPDFDictionaryGetObject,
 		CGPDFArrayRef:      CGPDFArrayGetObject,
-		CGPDFStreamRef:     lambda s: CGPDFDictionaryGetObject(CGPDFStreamGetDictionary(s)),
+		CGPDFStreamRef:     lambda s, k, _: CGPDFDictionaryGetObject(CGPDFStreamGetDictionary(s), k, _),
 	}[data.__class__]
 	try:
 		head = head.encode()
@@ -581,6 +591,7 @@ def get_movie(url):
 
 animations_state = {}
 def parse_fps(js):
+	js = js.decode()
 	i = js.find('_fps=')
 	if i < 0: return
 	b, e = js.rfind(';', 0, i), js.find(';', i)
@@ -601,10 +612,33 @@ for page_number in range(_page_count):
 			continue
 
 		try:
-			js = cgpdf_get(annot, 'AA', 'PO', 'JS')
+			po = cgpdf_get(annot, 'AA', 'PO')
 		except LookupError:
 			continue
-		parse_fps(js)
+		
+		s = cgpdf_get(po, 'S')
+		if s == 'JavaScript':
+			parse_fps(cgpdf_get(po, 'JS'))
+		elif s == 'Rendition':
+			r = cgpdf_get(po, 'R')
+			if cgpdf_get(r, 'S') != 'MR':
+				continue
+			c = cgpdf_get(r, 'C')
+			if cgpdf_get(c, 'S') != 'MCD':
+				continue
+			d = cgpdf_get(po, 'R', 'C', 'D')
+			movie_filename = os.path.join(TMP_DIR_PATH, os.path.basename(cgpdf_get(d, 'F')))
+			with open(movie_filename, 'bw') as movie:
+				movie.write(cgpdf_get(d, 'EF', 'F'))
+			x, y, w, h = cgpdf_array2list(cgpdf_get(annot, 'Rect'))
+			pdf_annotation = PDFAnnotation.alloc().initWithBounds_forType_withProperties_(
+				((x, y), (w, h)),
+				'Link',
+				None
+			)
+			pdf_annotation.setURL_(NSURL.fileURLWithPath_(movie_filename))
+			pdf.pageAtIndex_(page_number).addAnnotation_(pdf_annotation)
+			
 
 animations = {}
 def prepare_animations(annotations):
@@ -759,6 +793,8 @@ for page_number in range(page_count):
 				movies[annotation] = movie
 		elif annotation_type == 'Widget':
 			widgets[annotation.valueForAnnotationKey_('T')] = annotation
+		elif annotation_type in ['Screen', 'FileAttachment']:
+			page.removeAnnotation_(annotation)
 prepare_animations(widgets)
 
 
@@ -2040,6 +2076,7 @@ class ApplicationDelegate(NSObject):
 		recent_files[url.path()] = current_page
 		user_defaults.setObject_forKey_(recent_files, RECENT_FILES)
 		presentation_show()
+		cleanup_tmp()
 	
 	def fullScreen_(self, sender):
 		toggle_fullscreen(fullscreen=True)
