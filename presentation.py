@@ -348,7 +348,7 @@ _page_count = CGPDFDocumentGetNumberOfPages(_pdf)
 
 def cgpdf_dictionary2dict(d):
 	res = {}
-	CGPDFDictionaryApplyFunction(d, lambda k, v, _: res.update({k.decode(): v}), None)
+	CGPDFDictionaryApplyFunction(d, lambda k, v, _: res.update({k: v}), None)
 	return res
 
 def cgpdf_array2list(a):
@@ -728,16 +728,19 @@ def handle_animation(annotation):
 
 # scanning annotations for notes, movies and animations #####################
 
-def annotations(page):
-	return page.annotations() or []
-
 def add_movie_pdfannotationlink(page_number, annot, movie):
-	if type(movie) == str:
-		movie_filename = movie
+	if type(movie) == CGPDFDictionaryRef:
+		try:
+			fs = cgpdf_get(movie, 'FS')
+		except LookupError:
+			movie_filename = os.path.join(TMP_DIR_PATH, os.path.basename(cgpdf_get(movie, 'F')))
+			with open(movie_filename, 'bw') as movie_file:
+				movie_file.write(cgpdf_get(movie, 'EF', 'F'))
+			u = NSURL.fileURLWithPath_(movie_filename)
+		else:
+			u = NSURL.URLWithString_(cgpdf_get(movie, 'F'))
 	else:
-		movie_filename = os.path.join(TMP_DIR_PATH, os.path.basename(cgpdf_get(movie, 'F')))
-		with open(movie_filename, 'bw') as movie_file:
-			movie_file.write(cgpdf_get(movie, 'EF', 'F'))
+		u = url.URLByDeletingLastPathComponent().URLByAppendingPathComponent_(movie)
 	rect = cgpdf_array2list(cgpdf_get(annot, 'Rect'))
 	x0, y0, x1, y1 = rect
 	pdf_annotation = PDFAnnotation.alloc().initWithBounds_forType_withProperties_(
@@ -745,7 +748,7 @@ def add_movie_pdfannotationlink(page_number, annot, movie):
 		'Link',
 		None
 	)
-	pdf_annotation.setURL_(NSURL.fileURLWithPath_(movie_filename))
+	pdf_annotation.setURL_(u)
 	pdf.pageAtIndex_(page_number).addAnnotation_(pdf_annotation)
 
 
@@ -755,10 +758,10 @@ for page_number in range(_page_count):
 	_page = CGPDFDocumentGetPage(_pdf, page_number+1)
 	_dict = CGPDFPageGetDictionary(_page)
 	try:
-		annotations = cgpdf_get(_dict, 'Annots')
+		_annotations = cgpdf_get(_dict, 'Annots')
 	except LookupError:
 		continue
-	for annot in cgpdf_array2list(annotations):
+	for annot in cgpdf_array2list(_annotations):
 		subtype = cgpdf_get(annot, 'Subtype')
 		if subtype == 'Movie':
 			movie_filename = cgpdf_get(annot, 'Movie', 'F')
@@ -782,12 +785,15 @@ for page_number in range(_page_count):
 		
 		elif subtype == 'RichMedia': # media9 style embedded movie?
 			content = cgpdf_get(annot, 'RichMediaContent')
-			params = cgpdf_get(content, 'Configurations', 0, 'Instances', 0, 'Params', 'FlashVars')
-			params = dict(
-				param.split('=')
-				for param in params.split('&') if param
-			)
-			source = params.get('source', None)
+			try:
+				params = cgpdf_get(content, 'Configurations', 0, 'Instances', 0, 'Params', 'FlashVars')
+				params = dict(
+					param.split('=')
+					for param in params.split('&') if param
+				)
+				source = params['source']
+			except LookupError:
+				source = None
 			assets = iter(cgpdf_array2list(cgpdf_get(content, 'Assets', 'Names')))
 			for asset_name in assets:
 				movie = next(assets)
@@ -797,6 +803,9 @@ for page_number in range(_page_count):
 
 
 # high level annotation handling
+
+def annotations(page):
+	return page.annotations() or []
 
 pdf_notes = defaultdict(list)
 movies = {}
@@ -815,7 +824,7 @@ for page_number in range(page_count):
 		elif annotation_type == 'Widget':
 			widgets[annotation.valueForAnnotationKey_('T')] = annotation
 		elif annotation_type in ['Movie', 'Screen', 'FileAttachment', 'RichMedia']:
-			page.removeAnnotation_(annotation)
+			annotation.setShouldDisplay_(False)
 prepare_animations(widgets)
 
 
