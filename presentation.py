@@ -603,7 +603,14 @@ def parse_fps(js):
 	a, fps = int(a[len('a'):]), int(fps)
 	animations_state['anm%i' % a] = (0, fps)
 
-def add_movie_pdfannotationlink(page_number, movie_filename, rect):
+def add_movie_pdfannotationlink(page_number, annot, movie):
+	if type(movie) == str:
+		movie_filename = movie
+	else:
+		movie_filename = os.path.join(TMP_DIR_PATH, os.path.basename(cgpdf_get(movie, 'F')))
+		with open(movie_filename, 'bw') as movie_file:
+			movie_file.write(cgpdf_get(movie, 'EF', 'F'))
+	rect = cgpdf_array2list(cgpdf_get(annot, 'Rect'))
 	x0, y0, x1, y1 = rect
 	pdf_annotation = PDFAnnotation.alloc().initWithBounds_forType_withProperties_(
 		((x0, y0), (x1-x0, y1-y0)),
@@ -624,10 +631,9 @@ for page_number in range(_page_count):
 		subtype = cgpdf_get(annot, 'Subtype')
 		if subtype == 'Movie':
 			movie_filename = cgpdf_get(annot, 'Movie', 'F')
-			rect = cgpdf_array2list(cgpdf_get(annot, 'Rect'))
-			add_movie_pdfannotationlink(page_number, movie_filename, rect)
+			add_movie_pdfannotationlink(page_number, annot, movie_filename)
 		
-		if subtype == 'Screen':
+		elif subtype == 'Screen':
 			try:
 				po = cgpdf_get(annot, 'AA', 'PO')
 			except LookupError:
@@ -638,17 +644,29 @@ for page_number in range(_page_count):
 			if po_subtype == 'JavaScript': # animate fps info?
 				parse_fps(cgpdf_get(po, 'JS'))
 			
-			elif po_subtype == 'Rendition': # embedded movie?
+			elif po_subtype == 'Rendition': # movie15 style embedded movie?
 				r = cgpdf_get(po, 'R')
 				if cgpdf_get(r, 'S') != 'MR': continue
 				c = cgpdf_get(r, 'C')
 				if cgpdf_get(c, 'S') != 'MCD': continue
-				d = cgpdf_get(po, 'R', 'C', 'D')
-				movie_filename = os.path.join(TMP_DIR_PATH, os.path.basename(cgpdf_get(d, 'F')))
-				with open(movie_filename, 'bw') as movie:
-					movie.write(cgpdf_get(d, 'EF', 'F'))
-				rect = cgpdf_array2list(cgpdf_get(annot, 'Rect'))
-				add_movie_pdfannotationlink(page_number, movie_filename, rect)
+				movie = cgpdf_get(po, 'R', 'C', 'D')
+				add_movie_pdfannotationlink(page_number, annot, movie)
+		
+		elif subtype == 'RichMedia': # media9 style embedded movie?
+			content = cgpdf_get(annot, 'RichMediaContent')
+			params = cgpdf_get(content, 'Configurations', 0, 'Instances', 0, 'Params', 'FlashVars')
+			params = dict(
+				param.split('=')
+				for param in params.split('&') if param
+			)
+			source = params.get('source', None)
+			assets = iter(cgpdf_array2list(cgpdf_get(content, 'Assets', 'Names')))
+			for asset_name in assets:
+				movie = next(assets)
+				if asset_name == source:
+					break
+			add_movie_pdfannotationlink(page_number, annot, movie)
+		
 
 animations = {}
 def prepare_animations(annotations):
@@ -796,7 +814,7 @@ for page_number in range(page_count):
 				movies[annotation] = movie
 		elif annotation_type == 'Widget':
 			widgets[annotation.valueForAnnotationKey_('T')] = annotation
-		elif annotation_type in ['Movie', 'Screen', 'FileAttachment']:
+		elif annotation_type in ['Movie', 'Screen', 'FileAttachment', 'RichMedia']:
 			page.removeAnnotation_(annotation)
 prepare_animations(widgets)
 
