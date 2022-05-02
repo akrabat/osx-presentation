@@ -766,7 +766,7 @@ for page_number in range(_page_count):
 		if subtype == 'Movie':
 			movie_filename = cgpdf_get(annot, 'Movie', 'F')
 			add_movie_pdfannotationlink(page_number, annot, movie_filename)
-			
+		
 		elif subtype == 'Screen':
 			try:
 				po = cgpdf_get(annot, 'AA', 'PO')
@@ -1330,7 +1330,7 @@ class PresenterView(NSView):
 			# links
 			NSColor.blueColor().setFill()
 			for annotation in annotations(self.page):
-				if annotation.type() in ['Link', 'Movie', 'Widget'] and annotation.shouldDisplay():
+				if annotation.type() in ['Link', 'Widget'] and annotation.shouldDisplay():
 					NSFrameRectWithWidth(annotation.bounds(), .5)
 
 		for path, color, size in drawings[page]:
@@ -1495,7 +1495,7 @@ class PresenterView(NSView):
 			return
 		
 		for i, annotation in enumerate(annotations(self.page)):
-			if annotation.type() not in ['Link', 'Movie', 'Widget']:
+			if annotation.type() not in ['Link', 'Widget']:
 				continue
 			if not annotation.shouldDisplay():
 				continue
@@ -1788,7 +1788,7 @@ class PresenterView(NSView):
 			next_page()
 			return
 		
-		if annotation.type() not in ['Link', 'Movie', 'Widget']:
+		if annotation.type() not in ['Link', 'Widget']:
 			return
 		
 		if annotation in movies:
