@@ -208,7 +208,8 @@ from AppKit import (
 	NSBackingStoreBuffered,
 	NSCommandKeyMask, NSAlternateKeyMask, NSControlKeyMask, NSShiftKeyMask,
 	NSGraphicsContext,
-	NSCompositeClear, NSCompositeSourceAtop, NSCompositeCopy,
+	NSCompositingOperationClear, NSCompositingOperationSourceAtop,
+	NSCompositingOperationCopy, NSCompositingOperationExclusion,
 	NSRectFillUsingOperation, NSFrameRectWithWidth, NSFrameRect, NSEraseRect,
 	NSRect, NSZeroRect, NSUnionRect, NSContainsRect, NSPointInRect, NSColor,
 	NSFont, NSFontAttributeName, NSForegroundColorAttributeName,
@@ -219,6 +220,7 @@ from AppKit import (
 	NSPageUpFunctionKey, NSPageDownFunctionKey,
 	NSPrevFunctionKey, NSNextFunctionKey, NSF5FunctionKey,
 	NSScreen, NSWorkspace, NSImage, NSBezierPath,
+	NSImageNameGoForwardTemplate, NSImageNameSlideshowTemplate,
 	NSRoundLineCapStyle, NSRoundLineJoinStyle, NSEvenOddWindingRule,
 	NSLayoutConstraint,
 	NSEventTypeApplicationDefined, NSEventSubtypeTabletPoint,
@@ -254,7 +256,10 @@ from AVFoundation import (
 	AVAuthorizationStatusAuthorized, AVAuthorizationStatusNotDetermined,
 )
 
-from CoreMedia import CMTimeMakeWithSeconds
+from CoreMedia import (
+	CIImage, CIFilter, NSCIImageRep,
+	CMTimeMakeWithSeconds,
+)
 NSEC_PER_SEC = 1000000000
 
 
@@ -285,6 +290,12 @@ ICON = NSImage.alloc().initWithData_(NSData.dataWithBytes_length_(ICON, len(ICON
 cursor = NSCursor.crosshairCursor()
 CURSOR = cursor.image()
 X_hot, Y_hot = cursor.hotSpot()
+PLAY = NSImage.imageNamed_(NSImageNameSlideshowTemplate)
+f = CIFilter.filterWithName_('CIColorInvert')
+f.setValue_forKey_(CIImage.imageWithData_(PLAY.TIFFRepresentation()), 'inputImage')
+for r in PLAY.representations():
+	PLAY.removeRepresentation_(r)
+PLAY.addRepresentation_(NSCIImageRep.imageRepWithCIImage_(f.outputImage()))
 
 
 # presentation ##############################################################
@@ -953,7 +964,7 @@ def draw_page(page):
 			bounds.size.height -= dh
 		
 		poster.drawInRect_fromRect_operation_fraction_(
-			bounds, NSZeroRect, NSCompositeCopy, 1.
+			bounds, NSZeroRect, NSCompositingOperationCopy, 1.
 		)
 
 
@@ -965,7 +976,7 @@ def draw_cursor(x, y, iw, ih):
 	cursor_bounds.size = (W/iw, H/ih)
 	cursor_bounds.origin = x-X_hot/iw, y-(H-Y_hot)/ih
 	CURSOR.drawInRect_fromRect_operation_fraction_(
-		cursor_bounds, NSZeroRect, NSCompositeSourceAtop, 1.
+		cursor_bounds, NSZeroRect, NSCompositingOperationSourceAtop, 1.
 	)
 
 
@@ -980,7 +991,7 @@ class SlideView(NSView):
 		bounds = self.bounds()
 		width, height = bounds.size
 		
-		NSRectFillUsingOperation(bounds, NSCompositeClear)
+		NSRectFillUsingOperation(bounds, NSCompositingOperationClear)
 		
 		# current page
 		page = pdf.pageAtIndex_(current_page)
@@ -1301,7 +1312,7 @@ class PresenterView(NSView):
 			if y > height:
 				continue
 			image.drawInRect_fromRect_operation_fraction_(
-				((x, y), (w, h)), NSZeroRect, NSCompositeCopy, 1.
+				((x, y), (w, h)), NSZeroRect, NSCompositingOperationCopy, 1.
 			)
 			if i == current_page:
 				NSColor.yellowColor().setFill()
@@ -1391,13 +1402,13 @@ class PresenterView(NSView):
 				rect = transform_rect(board_bbox, rect)
 			else:
 				rect = transform_rect(slide_view.transform, rect)
-			NSRectFillUsingOperation(rect, NSCompositeSourceAtop)
+			NSRectFillUsingOperation(rect, NSCompositingOperationSourceAtop)
 
 		NSGraphicsContext.restoreGraphicsState()
-		NSRectFillUsingOperation(((0, 0), (margin, height)), NSCompositeClear)
-		NSRectFillUsingOperation(((margin, height-1.5*margin), (width+MINIATURE_WIDTH-margin, 1.5*margin)), NSCompositeClear)
-		NSRectFillUsingOperation(((margin+r*w, 0), (width+MINIATURE_WIDTH-margin+r*w, height)), NSCompositeClear)
-		NSRectFillUsingOperation(((0, 0), (width+MINIATURE_WIDTH, height-1.5*margin-r*h)), NSCompositeClear)
+		NSRectFillUsingOperation(((0, 0), (margin, height)), NSCompositingOperationClear)
+		NSRectFillUsingOperation(((margin, height-1.5*margin), (width+MINIATURE_WIDTH-margin, 1.5*margin)), NSCompositingOperationClear)
+		NSRectFillUsingOperation(((margin+r*w, 0), (width+MINIATURE_WIDTH-margin+r*w, height)), NSCompositingOperationClear)
+		NSRectFillUsingOperation(((0, 0), (width+MINIATURE_WIDTH, height-1.5*margin-r*h)), NSCompositingOperationClear)
 		
 		if self.state == DRAW:
 			return
@@ -1433,6 +1444,13 @@ class PresenterView(NSView):
 		page_number.drawAtPoint_withAttributes_((margin+current_width-tw,
 		                                         height-1.4*margin), attr)
 		
+		if current_page in durations:
+			PLAY.drawAtPoint_fromRect_operation_fraction_(
+				(margin+current_width-20, height-1.5*margin-18),
+				NSZeroRect,
+				NSCompositingOperationExclusion, .5 if _auto_turn else 1.
+			)
+
 		# notes
 		note = NSString.stringWithString_("".join(
 			"\n\n".join(notes[current_page])
@@ -1494,7 +1512,7 @@ class PresenterView(NSView):
 
 		
 		NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
-		NSRectFillUsingOperation(page_rect, NSCompositeSourceAtop)
+		NSRectFillUsingOperation(page_rect, NSCompositingOperationSourceAtop)
 		
 		ibbox = NSAffineTransform.alloc().initWithTransform_(bbox)
 		ibbox.invert()
