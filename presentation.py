@@ -1477,7 +1477,7 @@ class PresenterView(NSView):
 		page_number.drawAtPoint_withAttributes_((margin+current_width-tw,
 		                                         height-1.4*margin), attr)
 		
-		if current_page in durations:
+		if page in durations:
 			PLAY.drawAtPoint_fromRect_operation_fraction_(
 				(margin+current_width-20, height-1.5*margin-18),
 				NSZeroRect,
@@ -1522,10 +1522,7 @@ class PresenterView(NSView):
 		else:
 			return
 		
-		if page == "board":
-			page_rect = board_view.bounds()
-		else:
-			page_rect = next_page.boundsForBox_(kPDFDisplayBoxCropBox)
+		page_rect = next_page.boundsForBox_(kPDFDisplayBoxCropBox)
 		_, (w, h) = page_rect
 		r = current_width/2./w
 		
@@ -1537,11 +1534,7 @@ class PresenterView(NSView):
 		transform.concat()
 		
 		NSEraseRect(page_rect)
-		if page == "board":
-			for path, color, size in drawings["board"]:
-				stroke(path, color, outline=None, size=size)
-		else:
-			next_page.drawWithBox_(kPDFDisplayBoxCropBox)
+		next_page.drawWithBox_(kPDFDisplayBoxCropBox)
 
 		
 		NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
