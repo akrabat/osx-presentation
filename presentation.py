@@ -1045,13 +1045,18 @@ class SlideView(NSView):
 		self.setNeedsDisplay_(True)
 	
 	def mouseUp_(self, event):
-		if event.clickCount() >= 2:
-			_full_screen = presentation_window.styleMask() & NSWindowStyleMaskFullScreen
-			if not _full_screen:
-				presentation_window.setStyleMask_(NSWindowStyleMaskResizable|NSWindowStyleMaskTitled)
-			presentation_window.toggleFullScreen_(None)
-			if _full_screen:
-				presentation_window.setStyleMask_(NSWindowStyleMaskResizable|NSWindowStyleMaskBorderless)
+		if event.clickCount() < 2:
+			return
+		if presenter_view.isInFullScreenMode():
+			toggle_fullscreen()
+			return
+		
+		_fullscreen = presentation_window.styleMask() & NSWindowStyleMaskFullScreen
+		if not _fullscreen:
+			presentation_window.setStyleMask_(NSWindowStyleMaskResizable|NSWindowStyleMaskTitled)
+		presentation_window.toggleFullScreen_(None)
+		if _fullscreen:
+			presentation_window.setStyleMask_(NSWindowStyleMaskResizable|NSWindowStyleMaskBorderless)
 
 
 class BoardView(NSView):
