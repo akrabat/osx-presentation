@@ -71,8 +71,8 @@ HELP = [
 	(      "{/}", "sub/add 10 minutes"),
 	("&lt;/&gt;", "step movie/animation backward/forward"),
 	(    "+/-/0", "zoom in/out/reset speaker notes or web view"),
-	(        "l", "toggle spotlight"),
-	(      "p/P", "reduce/augment pointer/spotlight size"),
+	(        "l", "toggle pointer/laser/spotlight"),
+	(      "p/P", "reduce/augment pointer/laser/spotlight size"),
 	(        "e", "erase on-screen annotations"),
 	(        "x", "switch screens"),
 ]
@@ -213,6 +213,7 @@ from AppKit import (
 	NSCompositingOperationCopy, NSCompositingOperationExclusion,
 	NSRectFillUsingOperation, NSFrameRectWithWidth, NSFrameRect, NSEraseRect,
 	NSRect, NSZeroRect, NSUnionRect, NSContainsRect, NSPointInRect, NSColor,
+	NSGradient, NSColorSpace,
 	NSFont, NSFontAttributeName, NSForegroundColorAttributeName,
 	NSStrokeColorAttributeName, NSStrokeWidthAttributeName,
 	NSUpArrowFunctionKey, NSLeftArrowFunctionKey,
@@ -291,6 +292,14 @@ ICON = NSImage.alloc().initWithData_(NSData.dataWithBytes_length_(ICON, len(ICON
 cursor = NSCursor.crosshairCursor()
 CURSOR = cursor.image()
 X_hot, Y_hot = cursor.hotSpot()
+
+LASER_GRADIENT = NSGradient.alloc().initWithColors_atLocations_colorSpace_(
+	[NSColor.redColor().colorWithAlphaComponent_(alpha)
+		for alpha in [.5, 1., 1., .5, 0.]],
+	[.1, .2, .4, .4, 1.],
+	NSColorSpace.deviceRGBColorSpace(),
+)
+
 PLAY = NSImage.imageNamed_(NSImageNameSlideshowTemplate)
 f = CIFilter.filterWithName_('CIColorInvert')
 f.setValue_forKey_(CIImage.imageWithData_(PLAY.TIFFRepresentation()), 'inputImage')
@@ -981,11 +990,13 @@ def draw_cursor(x, y, iw, ih):
 	)
 
 
+NO_LIGHT, LASER, HIGH_LIGHT = range(3)
+
 class SlideView(NSView):
 	cursor_scale = 1.
 	spotlight_radius = 20.
 	show_cursor = False
-	show_spotlight = False
+	show_spotlight = NO_LIGHT
 	hide_timer = None
 	
 	def drawRect_(self, rect):
@@ -1013,15 +1024,21 @@ class SlideView(NSView):
 		
 		x, y = cursor_location
 		if self.show_spotlight:
-			spotlight = NSBezierPath.bezierPathWithRect_(bounds)
-			if spotlight.containsPoint_(cursor_location):
-				r = self.spotlight_radius*self.cursor_scale
-				focus = NSBezierPath.bezierPathWithOvalInRect_(((x-r, y-r), (2*r, 2*r)))
-				stroke(focus)
-				spotlight.appendBezierPath_(focus)
-				spotlight.setWindingRule_(NSEvenOddWindingRule)
-				NSColor.colorWithCalibratedWhite_alpha_(.5, .25).setFill()
-				spotlight.fill()
+			r = self.spotlight_radius*self.cursor_scale
+			if self.show_spotlight == LASER:
+				LASER_GRADIENT.drawFromCenter_radius_toCenter_radius_options_(
+					cursor_location, 0.,
+					cursor_location, r/2., 0
+				)
+			elif self.show_spotlight == HIGH_LIGHT:
+				spotlight = NSBezierPath.bezierPathWithRect_(bounds)
+				if spotlight.containsPoint_(cursor_location):
+					focus = NSBezierPath.bezierPathWithOvalInRect_(((x-r, y-r), (2*r, 2*r)))
+					stroke(focus)
+					spotlight.appendBezierPath_(focus)
+					spotlight.setWindingRule_(NSEvenOddWindingRule)
+					NSColor.colorWithCalibratedWhite_alpha_(.5, .5).setFill()
+					spotlight.fill()
 		elif self.show_cursor:
 			iw, ih = transform.transformSize_((1./self.cursor_scale, 1./self.cursor_scale))
 			draw_cursor(x, y, iw, ih)
@@ -1731,7 +1748,7 @@ class PresenterView(NSView):
 			slide_view.showCursor()
 		
 		elif c == 'l':
-			slide_view.show_spotlight = not slide_view.show_spotlight
+			slide_view.show_spotlight = (slide_view.show_spotlight + 1) % 3
 			slide_view.showCursor()
 		
 		elif c == 'c': # choose color
