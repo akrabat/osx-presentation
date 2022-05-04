@@ -203,8 +203,9 @@ from AppKit import (
 	NSAlert, NSAlertDefaultReturn, NSAlertAlternateReturn,
 	NSWindow, NSView, NSSlider, NSMenu, NSMenuItem, NSCursor, NSPopUpButton,
 	NSViewWidthSizable, NSViewHeightSizable, NSViewNotSizable,
-	NSMiniaturizableWindowMask, NSResizableWindowMask, NSTitledWindowMask,
-	NSBorderlessWindowMask,
+	NSWindowStyleMaskMiniaturizable, NSWindowStyleMaskResizable,
+	NSWindowStyleMaskTitled, NSWindowStyleMaskBorderless,
+	NSWindowStyleMaskFullScreen,
 	NSBackingStoreBuffered,
 	NSCommandKeyMask, NSAlternateKeyMask, NSControlKeyMask, NSShiftKeyMask,
 	NSGraphicsContext,
@@ -1042,6 +1043,15 @@ class SlideView(NSView):
 	def hideCursor_(self, timer):
 		self.show_cursor = False
 		self.setNeedsDisplay_(True)
+	
+	def mouseUp_(self, event):
+		if event.clickCount() >= 2:
+			_full_screen = presentation_window.styleMask() & NSWindowStyleMaskFullScreen
+			if not _full_screen:
+				presentation_window.setStyleMask_(NSWindowStyleMaskResizable|NSWindowStyleMaskTitled)
+			presentation_window.toggleFullScreen_(None)
+			if _full_screen:
+				presentation_window.setStyleMask_(NSWindowStyleMaskResizable|NSWindowStyleMaskBorderless)
 
 
 class BoardView(NSView):
@@ -2160,7 +2170,7 @@ class ApplicationDelegate(NSObject):
 
 # window utils ##############################################################
 
-def create_window(title, Window=NSWindow, style=NSMiniaturizableWindowMask|NSResizableWindowMask|NSTitledWindowMask, ratio=None):
+def create_window(title, Window=NSWindow, style=NSWindowStyleMaskTitled|NSWindowStyleMaskMiniaturizable, ratio=None):
 	if ratio is None:
 		frame = PRESENTER_FRAME
 	else:
@@ -2168,7 +2178,7 @@ def create_window(title, Window=NSWindow, style=NSMiniaturizableWindowMask|NSRes
 		frame = o, (w, w/ratio)
 	window = Window.alloc().initWithContentRect_styleMask_backing_defer_screen_(
 		frame,
-		style,
+		style | NSWindowStyleMaskResizable,
 		NSBackingStoreBuffered,
 		NO,
 		None,
@@ -2202,7 +2212,7 @@ class Window(NSWindow):
 	def keyDown_(self, event):
 		return presenter_window.sendEvent_(event)
 
-presentation_window = create_window(file_name, Window=Window, style=NSBorderlessWindowMask|NSResizableWindowMask, ratio=ratio)
+presentation_window = create_window(file_name, Window=Window, style=NSWindowStyleMaskBorderless, ratio=ratio)
 presentation_window.setMovableByWindowBackground_(True)
 presentation_view   = presentation_window.contentView()
 frame = presentation_view.frame()
