@@ -933,9 +933,10 @@ color_chooser = NSColorPanel.sharedColorPanel()
 color_chooser.setLevel_(CGShieldingWindowLevel())
 color_chooser.setMode_(NSColorPanelModeCrayon)
 color_chooser.setColor_(NSColor.blackColor())
+color_chooser.setShowsAlpha_(True)
 
 def stroke(path, color=NSColor.blackColor(), outline=NSColor.whiteColor(), size=1):
-	if outline:
+	if outline and color.alphaComponent() >= 1.:
 		outline.setStroke()
 		path.setLineWidth_(size+1)
 		path.stroke()
@@ -1028,7 +1029,7 @@ class SlideView(NSView):
 			if self.show_spotlight == LASER:
 				LASER_GRADIENT.drawFromCenter_radius_toCenter_radius_options_(
 					cursor_location, 0.,
-					cursor_location, r/2., 0
+					cursor_location, r/4., 0
 				)
 			elif self.show_spotlight == HIGH_LIGHT:
 				spotlight = NSBezierPath.bezierPathWithRect_(bounds)
