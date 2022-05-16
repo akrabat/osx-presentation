@@ -97,7 +97,8 @@ $(iconset): $(script)
 
 $(objc): requirements.txt $(venv)
 	mkdir -p $@
-	$(venv)/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --target=$@ -r $<
+	$(venv)/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --upgrade --target=$@ -r $<
+#	$(venv)/bin/pip install --platform macosx_10_9_universal2 --only-binary=:all: --target=$@ -r $<
 	
 $(venv):
 	/usr/bin/python3 -m venv $@

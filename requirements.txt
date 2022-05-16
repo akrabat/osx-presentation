@@ -1,6 +1,6 @@
-pyobjc-core
-pyobjc-framework-Cocoa
-pyobjc-framework-Quartz
-pyobjc-framework-WebKit
-pyobjc-framework-AVFoundation
-pyobjc-framework-UserNotifications
+pyobjc-core==8.5
+pyobjc-framework-Cocoa==8.5
+pyobjc-framework-Quartz==8.5
+pyobjc-framework-WebKit==8.5
+pyobjc-framework-AVFoundation==8.5
+pyobjc-framework-UserNotifications==8.5
