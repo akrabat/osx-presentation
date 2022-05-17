@@ -158,11 +158,11 @@ if len(args) > 1:
 
 # using bundled pyobjc
 for path in [
-	('..', 'Resources', 'packages'),
-	('packages',),
 	('..', '..', '..', 'packages',),
+	('packages',),
+	('..', 'Resources', 'packages'),
 ]:
-	sys.path.append(os.path.join(
+	sys.path.insert(0, os.path.join(
 		os.path.dirname(os.path.realpath(__file__)), *path))
 
 try:
