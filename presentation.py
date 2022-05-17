@@ -674,7 +674,7 @@ class AnimationPlayer(NSObject):
 animation_player = AnimationPlayer.alloc().init()
 
 animation_timer = None
-def advance_animation(k, step=1, target=None):
+def advance_animation(k, step=0, target=None):
 	frames = animations[k]
 	for current, f in enumerate(frames):
 		if f.shouldDisplay(): break
@@ -703,12 +703,11 @@ def advance_animation(k, step=1, target=None):
 	   (step > 0 and target == -1):
 		a = int(k[len('anm'):])
 		d = {-1: 'Left', 1: 'Right'}[step]
-		try:
-			pause = widgets['%i.Pause%s' % (a, d)]
-		except KeyError:
-			pass
-		else:
-			handle_animation(pause)
+		for w in ['%i.Pause%s', '%i.PlayPause%s']:
+			key = w % (a, d)
+			if key in widgets:
+				handle_animation(widgets[key])
+				break
 		return
 	
 	animation_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
@@ -717,6 +716,11 @@ def advance_animation(k, step=1, target=None):
 		(k, step), NO)
 
 
+def toggle_play_pause(a, play):
+	for d in ['Left', 'Right']:
+		widgets['%i.Play%s' % (a, d)].setShouldDisplay_(play)
+		widgets['%i.Pause%s' % (a, d)].setShouldDisplay_(not play)
+	
 def handle_animation(annotation):
 	t = annotation.valueForAnnotationKey_('T')
 	if t.startswith('btn@'):
@@ -738,26 +742,18 @@ def handle_animation(annotation):
 		}[t]
 		advance_animation(k, step, target)
 	
-	elif t in ['PlayLeft', 'PlayRight']:
+	elif t in ['PlayLeft', 'PauseLeft', 'PauseRight', 'PlayRight']:
 		step = {
-			'PlayLeft':  -1,
-			'PlayRight':  1,
+			'PlayLeft':   -1,
+			'PlayRight':   1,
+			'PauseLeft':   0,
+			'PauseRight':  0,
 		}[t]
 		_, fps = animations_state[k]
 		animations_state[k] = step, fps
-		advance_animation(k, 0)
-		for d in ['Left', 'Right']:
-			widgets['%i.Play%s' % (a, d)].setShouldDisplay_(False)
-			widgets['%i.Pause%s' % (a, d)].setShouldDisplay_(True)
+		advance_animation(k)
+		toggle_play_pause(a, 'Pause' in t)
 	
-	elif t in ['PauseLeft', 'PauseRight']:
-		_, fps = animations_state[k]
-		animations_state[k] = 0, fps
-		advance_animation(k, 0)
-		for d in ['Left', 'Right']:
-			widgets['%i.Pause%s' % (a, d)].setShouldDisplay_(False)
-			widgets['%i.Play%s' % (a, d)].setShouldDisplay_(True)
-
 	elif t in ['PlayPauseLeft', 'PlayPauseRight']:
 		step = {
 			'PlayPauseLeft':  -1,
@@ -767,11 +763,11 @@ def handle_animation(annotation):
 		if _step == step:
 			step = 0
 		animations_state[k] = step, fps
-		advance_animation(k, 0)
+		advance_animation(k)
 		
 	elif t in ['Minus', 'Plus', 'Reset']:          pass
 	else:
-		advance_animation(k)
+		advance_animation(k, 1)
 	refresher.refresh()
 
 
