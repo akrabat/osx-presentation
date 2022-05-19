@@ -23,7 +23,7 @@ dist    := osx-presentation-$(VERSION).pkg
 
 # rules ######################################################################
 
-.PHONY: all dev pkg archive clean
+.PHONY: all dev pkg staple archive clean
 
 all: $(app)
 
@@ -105,12 +105,15 @@ $(venv):
 	$@/bin/pip install --upgrade pip
 	touch $@
 
-
 pkg: $(dist)
 	xcrun altool --notarize-app --primary-bundle-id $(IDENTIFIER) --username 'blanch@imag.fr' --password '@keychain:Developer-altool' --file $<
 
 $(dist): $(app)
 	productbuild --timestamp --sign "Developer ID Installer: Renaud Blanch (J6M3684Y6M)" --identifier $(IDENTIFIER) --version $(VERSION) --component $^ /Applications $@
+
+
+staple:
+	xcrun stapler staple $(dist)
 
 
 archive:
