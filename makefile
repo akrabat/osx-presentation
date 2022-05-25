@@ -96,8 +96,11 @@ $(iconset): $(script)
 
 
 $(objc): requirements.txt $(venv)
-	mkdir -p $@
-	$(venv)/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --upgrade --target=$@ -r $<
+	for python_version in 3.7 3.8; do \
+		mkdir -p $@/$$python_version; \
+		$(venv)/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --upgrade --python-version=$$python_version --target=$@/$$python_version -r $< ; \
+	done
+#	$(venv)/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --upgrade --target=$@ -r $<
 #	$(venv)/bin/pip install --platform macosx_10_9_universal2 --only-binary=:all: --target=$@ -r $<
 	
 $(venv):

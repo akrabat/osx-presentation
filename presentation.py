@@ -29,7 +29,7 @@ from collections import defaultdict
 
 NAME = "Présentation"
 ID = "fr.imag.iihm.blanch.osx-presentation"
-MAJOR, MINOR, PATCH, BETA = 3, 1, 0, ''
+MAJOR, MINOR, PATCH, BETA = 3, 1, 1, 'a'
 VERSION = "%s.%s.%s%s" % (MAJOR, MINOR, PATCH, BETA)
 HOME = "http://iihm.imag.fr/blanch/software/osx-presentation/"
 COPYRIGHT = "Copyright © 2011-2022 Renaud Blanch"
@@ -157,13 +157,14 @@ if len(args) > 1:
 # application init ##########################################################
 
 # using bundled pyobjc
+python_version = '%s.%s' % (sys.version_info.major, sys.version_info.minor)
 for path in [
-	('..', '..', '..', 'packages',),
-	('packages',),
-	('..', 'Resources', 'packages'),
+	('..', '..', '..',),
+	(),
+	('..', 'Resources'),
 ]:
 	sys.path.insert(0, os.path.join(
-		os.path.dirname(os.path.realpath(__file__)), *path))
+		os.path.dirname(os.path.realpath(__file__)), *path, 'packages', python_version))
 
 try:
 	from objc import setVerbose
