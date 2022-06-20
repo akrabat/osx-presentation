@@ -1210,14 +1210,11 @@ class VideoView(NSView):
 	def toggle_size(self):
 		self._small = not self._small
 		if self._small:
-			view = slide_view
 			alpha = .75
 			gravity = AVLayerVideoGravityResizeAspectFill
 		else:
-			view = black_view
 			alpha = 1.
 			gravity = AVLayerVideoGravityResizeAspect
-		presentation_show(view)
 		self.setAlphaValue_(alpha)
 		self.preview.setVideoGravity_(gravity)
 		self.layout()
