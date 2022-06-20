@@ -1082,7 +1082,9 @@ class BoardView(NSView):
 		return self
 
 	def drawRect_(self, rect):
-		NSEraseRect(self.bounds())
+		_, (w, h) = bounds = self.bounds()
+		NSEraseRect(bounds)
+
 		for path, color, size in drawings["board"]:
 			stroke(path, color, outline=None, size=size)
 
@@ -1388,6 +1390,21 @@ class PresenterView(NSView):
 			bbox = board_bbox
 			bbox.concat()
 			NSEraseRect(page_rect)
+			_, (w, h) = page_rect
+			lines = NSBezierPath.bezierPath()
+			y = 0.
+			while y < h:
+				y += 50
+				lines.moveToPoint_((0, h-y))
+				lines.lineToPoint_((w, h-y))
+			x = 0.
+			while x < w:
+				x += 50
+				lines.moveToPoint_((x, 0))
+				lines.lineToPoint_((x, h))
+			NSColor.grayColor().setStroke()
+			lines.stroke()
+
 		else:
 			bbox = slide_bbox
 			bbox.concat()
