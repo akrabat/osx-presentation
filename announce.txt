@@ -7,6 +7,15 @@ You can download this release here: http://iihm.imag.fr/blanch/software/osx-pres
 
 -----------------------------------------------------------------------------
 
+3.1.1 announce
+
+This minor release adds support for python3.9 which is the default Python interpreter for macos 12.6.
+It also adds support for python3.7 for late user of macos 12.4.
+The PyObjC binaries are now (for 12.6+) universal (x86_64 and arm64).
+
+
+-----------------------------------------------------------------------------
+
 3.1 announce
 
 This release adds many new features, most notably centered about embeded media support:
@@ -72,6 +81,9 @@ http://iihm.imag.fr/blanch/software/osx-presentation/
 -----------------------------------------------------------------------------
 
 Changes since 3.0
+
+3.1.1:
+  - added support for python3.7 (macos 12.4, x86_64) and python3.9 (macos 12.6, x86_64 and arm64)
 
 3.1.0:
   - added support for media9 and movie15 style movie embedding
