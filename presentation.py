@@ -438,7 +438,7 @@ page_turner = PageTurner.alloc().init()
 
 _auto_turn = False
 duration_timer = None
-def handle_duration(page):
+def handle_turn(page):
 	if not _auto_turn or page not in durations:
 		return
 	global duration_timer
@@ -455,7 +455,7 @@ def toggle_auto_turn(auto_turn=None):
 		_auto_turn = not _auto_turn
 	else:
 		_auto_turn = auto_turn
-	handle_duration(current_page)
+	handle_turn(current_page)
 
 
 # navigation
@@ -478,7 +478,7 @@ future_pages = []
 def _goto(page):
 	global current_page
 	current_page = page
-	handle_duration(page)
+	handle_turn(page)
 	presentation_show(slide_view)
 
 def _pop_push_page(pop_pages, push_pages):
@@ -657,9 +657,9 @@ def parse_js(script):
 		elif k.endswith('_gotoNext'): # check loop
 			loop = 'playing' in v.toString()
 		elif k.endswith('_playing'):  # check autoplay
-			playing = v.toBool()
+			autoplay = v.toBool()
 	
-	animations_state['anm%i' % a] = (0, fps)
+	animations_state['anm%i' % a] = (0, fps, loop, autoplay)
 
 
 animations = {}
@@ -719,7 +719,7 @@ def advance_animation(k, step=0, target=None):
 	
 	# auto play
 	try:
-		step, fps = animations_state[k]
+		step, fps, loop, autoplay = animations_state[k]
 	except:
 		return
 	
@@ -779,8 +779,8 @@ def handle_animation(annotation):
 			'PauseLeft':   0,
 			'PauseRight':  0,
 		}[t]
-		_, fps = animations_state[k]
-		animations_state[k] = step, fps
+		_, fps, loop, autoplay = animations_state[k]
+		animations_state[k] = step, fps, loop, autoplay
 		advance_animation(k)
 		toggle_play_pause(a, 'Pause' in t)
 	
@@ -789,10 +789,10 @@ def handle_animation(annotation):
 			'PlayPauseLeft':  -1,
 			'PlayPauseRight':  1,
 		}[t]
-		_step, fps = animations_state[k]
+		_step, fps, loop, autoplay = animations_state[k]
 		if _step == step:
 			step = 0
-		animations_state[k] = step, fps
+		animations_state[k] = step, fps, loop, autoplay
 		advance_animation(k)
 		
 	elif t in ['Minus', 'Plus', 'Reset']:          pass
