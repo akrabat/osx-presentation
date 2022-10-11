@@ -622,19 +622,18 @@ def parse_js(script):
 		script = script.decode()
 	except AttributeError:
 		pass
-
+	
 	context = JSContext.alloc().init()
 	context.evaluateScript_("""
 		// stubbing getField and any other method by subsequent results
-		const p = new Proxy({}, {
+		const app = new Proxy({}, {
 			get(target, prop, receiver) {
 				return function(_) { return receiver; };
 			}
 		});
-		getField = p.getField;
+		getField = getOCGs = app.get;
 		
 		// stubbing javascript state expected by animate machinery
-		var app = {};
 		var display = {
 			hidden:  true,
 			visible: true,
@@ -643,22 +642,35 @@ def parse_js(script):
 		%(script)s
 		
 		// exposing global state names
-		var keys = Object.keys(this);
-	""" % {'script': script})
-	assert context.exception() == None
+		var i = Object.keys(this).filter(k => k.endsWith('_int'))[0];
+		if(i != undefined) {
+			var a = i.substring('a'.length, i.length-'_int'.length);
+		} else { //arbitrary upper bound
+			for(var a=0; a<100; a++){ if(this.hasOwnProperty('a'+a)) break; }
+		}
+		let p = 'a'+a;
 
-	for k in context.objectForKeyedSubscript_('keys').toArray():
-		v = context.objectForKeyedSubscript_(k)
-		if k.endswith('_fr'):         # id
-			assert k[0] == 'a'
-			a = int(k[len('a'):-len('_fr')])
-		elif k.endswith('_fps'):      # animation pace
-			fps = v.toNumber()
-		elif k.endswith('_gotoNext'): # check loop
-			loop = 'playing' in v.toString()
-		elif k.endswith('_playing'):  # check autoplay
-			autoplay = v.toBool()
-	
+		var fps, playing, next;
+		if(this.hasOwnProperty(p)) { // handle animate prior to 20160826
+			e = this[p];
+			fps     = 1000/e.dt - 1e-6;
+			playing = e.isPlaying;
+			next    = e.actnNext;
+		} else {
+			fps     = this[p+'_fps'];
+			playing = this[p+'_playing'];
+			next    = this[p+'_gotoNext']
+		}
+	""" % {'script': script})
+	assert context.exception() == None, context.exception()
+
+	a = int(context.objectForKeyedSubscript_('a').toNumber())
+	fps = float(context.objectForKeyedSubscript_('fps').toNumber())
+	autoplay = context.objectForKeyedSubscript_('playing').toBool()
+	loop = any(
+		p in context.objectForKeyedSubscript_('next').toString()
+		for p in ['playing', 'isPlaying']
+	)
 	animations_state['anm%i' % a] = (0, fps, loop, autoplay)
 
 
