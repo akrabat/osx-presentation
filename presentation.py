@@ -722,18 +722,15 @@ def advance_animation(k, step=0, target=None):
 		if f.shouldDisplay(): break
 	frames[current].setShouldDisplay_(False)
 	
-	l = len(frames)
-	if target is None: target = current + step
-	elif target < 0:   target += l
-	if target >= l:  target = -1
-	elif target < 0: target = 0
-	frames[target].setShouldDisplay_(True)
+	if target is None:
+		target = current + step
 	
-	# auto play
-	try:
-		step, fps, loop, autoplay = animations_state[k]
-	except:
-		return
+	step, fps, loop, autoplay = animations_state[k]
+	
+	l = len(frames)
+	if target >= l:  target = 0 if loop else -1
+	elif target < 0: target = -1 if loop else 0
+	frames[target].setShouldDisplay_(True)
 	
 	global animation_timer
 	if animation_timer:
@@ -741,8 +738,9 @@ def advance_animation(k, step=0, target=None):
 
 	if step == 0:
 		return
-	if (step < 0 and target == 0) or \
-	   (step > 0 and target == -1):
+	if not loop and \
+	   ((step < 0 and target == 0) or \
+	    (step > 0 and target == -1)):
 		a = int(k[len('anm'):])
 		d = {-1: 'Left', 1: 'Right'}[step]
 		for w in ['%i.Pause%s', '%i.PlayPause%s']:
