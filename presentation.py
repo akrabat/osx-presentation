@@ -439,15 +439,19 @@ page_turner = PageTurner.alloc().init()
 _auto_turn = False
 duration_timer = None
 def handle_turn(page):
-	if not _auto_turn or page not in durations:
+	if not _auto_turn:
 		return
-	global duration_timer
-	if duration_timer:
-		duration_timer.invalidate()
-	duration_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-		durations[page],
-		page_turner, 'turn:',
-		nil, NO)
+	if page in durations:
+		global duration_timer
+		if duration_timer:
+			duration_timer.invalidate()
+		duration_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+			durations[page],
+			page_turner, 'turn:',
+			nil, NO)
+	if page in autoplay_animations:
+		for k in autoplay_animations[page]:
+			advance_animation(k)
 
 def toggle_auto_turn(auto_turn=None):
 	global _auto_turn
@@ -617,7 +621,8 @@ def get_movie(url):
 # https://ctan.org/pkg/animate
 
 animations_state = {}
-def parse_js(script):
+autoplay_animations = defaultdict(list)
+def parse_js(script, page_number):
 	try:
 		script = script.decode()
 	except AttributeError:
@@ -665,13 +670,18 @@ def parse_js(script):
 	assert context.exception() == None, context.exception()
 
 	a = int(context.objectForKeyedSubscript_('a').toNumber())
-	fps = float(context.objectForKeyedSubscript_('fps').toNumber())
+	k = 'anm%i' % a
+
 	autoplay = context.objectForKeyedSubscript_('playing').toBool()
+	if autoplay:
+		autoplay_animations[page_number].append(k)
+	fps = float(context.objectForKeyedSubscript_('fps').toNumber())
 	loop = any(
 		p in context.objectForKeyedSubscript_('next').toString()
 		for p in ['playing', 'isPlaying']
 	)
-	animations_state['anm%i' % a] = (0, fps, loop, autoplay)
+
+	animations_state[k] = (1 if autoplay else 0, fps, loop)
 
 
 animations = {}
@@ -725,7 +735,7 @@ def advance_animation(k, step=0, target=None):
 	if target is None:
 		target = current + step
 	
-	step, fps, loop, autoplay = animations_state[k]
+	step, fps, loop = animations_state[k]
 	
 	l = len(frames)
 	if target >= l:  target = 0 if loop else -1
@@ -789,8 +799,8 @@ def handle_animation(annotation):
 			'PauseLeft':   0,
 			'PauseRight':  0,
 		}[t]
-		_, fps, loop, autoplay = animations_state[k]
-		animations_state[k] = step, fps, loop, autoplay
+		_, fps, loop = animations_state[k]
+		animations_state[k] = step, fps, loop
 		advance_animation(k)
 		toggle_play_pause(a, 'Pause' in t)
 	
@@ -799,10 +809,10 @@ def handle_animation(annotation):
 			'PlayPauseLeft':  -1,
 			'PlayPauseRight':  1,
 		}[t]
-		_step, fps, loop, autoplay = animations_state[k]
+		_step, fps, loop = animations_state[k]
 		if _step == step:
 			step = 0
-		animations_state[k] = step, fps, loop, autoplay
+		animations_state[k] = step, fps, loop
 		advance_animation(k)
 		
 	elif t in ['Minus', 'Plus', 'Reset']:          pass
@@ -859,7 +869,7 @@ for page_number in range(_page_count):
 				continue
 			po_subtype = cgpdf_get(po, 'S')
 			if po_subtype == 'JavaScript': # animate fps info?
-				parse_js(cgpdf_get(po, 'JS'))
+				parse_js(cgpdf_get(po, 'JS'), page_number)
 			elif po_subtype == 'Rendition': # movie15 style embedded movie?
 				r = cgpdf_get(po, 'R')
 				if cgpdf_get(r, 'S') != 'MR': continue
@@ -1527,7 +1537,7 @@ class PresenterView(NSView):
 		page_number.drawAtPoint_withAttributes_((margin+current_width-tw,
 		                                         height-1.4*margin), attr)
 		
-		if page in durations:
+		if page in durations or page in autoplay_animations:
 			PLAY.drawAtPoint_fromRect_operation_fraction_(
 				(margin+current_width-20, height-1.5*margin-18),
 				NSZeroRect,
@@ -1718,7 +1728,7 @@ class PresenterView(NSView):
 		
 		elif c == ' ': # play/pause video
 			if movie_view.isHidden(): # or...
-				if current_page in durations: # toggle auto page turn
+				if current_page in durations or current_page in autoplay_animations: # toggle auto page turn
 					toggle_auto_turn()
 				else:                         # or toggle timer
 					send('t')
