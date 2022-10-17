@@ -868,8 +868,11 @@ for page_number in range(_page_count):
 			except LookupError:
 				continue
 			po_subtype = cgpdf_get(po, 'S')
-			if po_subtype == 'JavaScript': # animate fps info?
-				parse_js(cgpdf_get(po, 'JS'), page_number)
+			if po_subtype == 'JavaScript': # animate info?
+				try:
+					parse_js(cgpdf_get(po, 'JS'), page_number)
+				except:
+					pass
 			elif po_subtype == 'Rendition': # movie15 style embedded movie?
 				r = cgpdf_get(po, 'R')
 				if cgpdf_get(r, 'S') != 'MR': continue
