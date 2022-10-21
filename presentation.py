@@ -1398,6 +1398,10 @@ class PresenterView(NSView):
 			if i == current_page:
 				NSColor.yellowColor().setFill()
 				NSFrameRectWithWidth(((x, y), (w, h)), 2)
+			elif i == self.preview_page or \
+			     (self.preview_page is None and i == current_page+1):
+				NSColor.lightGrayColor().setFill()
+				NSFrameRectWithWidth(((x, y), (w, h)), 2)
 			
 			page_number = NSString.stringWithString_("%s" % (i+1,))
 			attr = {
