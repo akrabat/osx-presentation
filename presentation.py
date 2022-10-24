@@ -2048,13 +2048,16 @@ class PresenterView(NSView):
 
 	
 	def mouseDragged_(self, event):
-		global cursor_location
 		location = self.transform.transformPoint_(event.locationInWindow())
+		if self.state in [MIN_CLIC, CLIC] and \
+		   hypot(location.x-self.press_location.x, location.y-self.press_location.y) < 5:
+			return
+
+		global cursor_location
 		dx, dy = location.x-cursor_location.x, location.y-cursor_location.y
 		cursor_location = location
+
 		if self.state == MIN_CLIC:
-			if hypot(cursor_location.x-self.press_location.x, cursor_location.y-self.press_location.y) < 5:
-				return
 			self.state = MIN_SCROLL
 		elif self.state == MIN_SCROLL:
 			self.miniature_origin -= event.deltaY()
