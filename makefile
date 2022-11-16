@@ -1,11 +1,11 @@
-# variables ##################################################################
+# variables #################################################################
 
 version = $(shell ./presentation.py --version)
 VERSION = $(lastword $(version))
 IDENTIFIER = $(word 2,$(version))
 
 
-# targets ####################################################################
+# targets ###################################################################
 
 # note: for pkgutil to work, the é should be UTF-8 NFD encoded
 # this could be forced using this line in pkg build rule, but it would add a dependency
@@ -21,7 +21,11 @@ venv    := env
 dist    := osx-presentation-$(VERSION).pkg
 
 
-# rules ######################################################################
+# rules #####################################################################
+
+# note: codesigning, pkg notarization and stapling,
+# see https://scriptingosx.com/2019/09/notarize-a-command-line-tool/
+
 
 .PHONY: all dev pkg staple archive clean
 
@@ -112,15 +116,13 @@ $(venv):
 	$@/bin/pip install --upgrade pip
 	touch $@
 
+
 pkg: $(dist)
 	xcrun altool --notarize-app --primary-bundle-id $(IDENTIFIER) --username 'blanch@imag.fr' --password '@keychain:Developer-altool' --file $<
+	xcrun stapler staple $<
 
 $(dist): $(app)
 	productbuild --timestamp --sign "Developer ID Installer: Renaud Blanch (J6M3684Y6M)" --identifier $(IDENTIFIER) --version $(VERSION) --component $^ /Applications $@
-
-
-staple:
-	xcrun stapler staple $(dist)
 
 
 archive:
