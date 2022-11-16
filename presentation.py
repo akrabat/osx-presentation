@@ -451,6 +451,7 @@ def handle_turn(page):
 			nil, NO)
 	if page in autoplay_animations:
 		for a in autoplay_animations[page]:
+			toggle_play_pause(a, False)
 			advance_animation(a)
 
 def toggle_auto_turn(auto_turn=None):
