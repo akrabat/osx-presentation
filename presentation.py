@@ -450,8 +450,8 @@ def handle_turn(page):
 			page_turner, 'turn:',
 			nil, NO)
 	if page in autoplay_animations:
-		for k in autoplay_animations[page]:
-			advance_animation(k)
+		for a in autoplay_animations[page]:
+			advance_animation(a)
 
 def toggle_auto_turn(auto_turn=None):
 	global _auto_turn
@@ -670,18 +670,17 @@ def parse_js(script, page_number):
 	assert context.exception() == None, context.exception()
 
 	a = int(context.objectForKeyedSubscript_('a').toNumber())
-	k = 'anm%i' % a
 
 	autoplay = context.objectForKeyedSubscript_('playing').toBool()
 	if autoplay:
-		autoplay_animations[page_number].append(k)
+		autoplay_animations[page_number].append(a)
 	fps = float(context.objectForKeyedSubscript_('fps').toNumber())
 	loop = any(
 		p in context.objectForKeyedSubscript_('next').toString()
 		for p in ['playing', 'isPlaying']
 	)
 
-	animations_state[k] = (1 if autoplay else 0, fps, loop)
+	animations_state[a] = (1 if autoplay else 0, fps, loop)
 
 
 animations = {}
@@ -695,9 +694,8 @@ def prepare_animations(annotations):
 	
 	a = 0
 	while True:
-		k = 'anm%i' % a
 		try:
-			anim = annotations[k]
+			anim = annotations['anm%i' % a]
 		except KeyError:
 			break
 		flags = anim.valueForAnnotationKey_('F')
@@ -714,20 +712,20 @@ def prepare_animations(annotations):
 				frame.setShouldDisplay_(False)
 			frames.append(frame)
 			i += 1
-		animations[k] = frames
+		animations[a] = frames
 		a += 1
 
 class AnimationPlayer(NSObject):
 	def play_(self, timer):
-		k, step = timer.userInfo()
-		advance_animation(k, step)
+		a, step = timer.userInfo()
+		advance_animation(a, step)
 		refresher.refresh()
 
 animation_player = AnimationPlayer.alloc().init()
 
 animation_timer = None
-def advance_animation(k, step=0, target=None):
-	frames = animations[k]
+def advance_animation(a, step=0, target=None):
+	frames = animations[a]
 	for current, f in enumerate(frames):
 		if f.shouldDisplay(): break
 	frames[current].setShouldDisplay_(False)
@@ -735,7 +733,7 @@ def advance_animation(k, step=0, target=None):
 	if target is None:
 		target = current + step
 	
-	step, fps, loop = animations_state[k]
+	step, fps, loop = animations_state[a]
 	
 	l = len(frames)
 	if target >= l:  target = 0 if loop else -1
@@ -751,7 +749,6 @@ def advance_animation(k, step=0, target=None):
 	if not loop and \
 	   ((step < 0 and target == 0) or \
 	    (step > 0 and target == -1)):
-		a = int(k[len('anm'):])
 		d = {-1: 'Left', 1: 'Right'}[step]
 		for w in ['%i.Pause%s', '%i.PlayPause%s']:
 			key = w % (a, d)
@@ -763,7 +760,7 @@ def advance_animation(k, step=0, target=None):
 	animation_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
 		1./fps,
 		animation_player, 'play:',
-		(k, step), NO)
+		(a, step), NO)
 
 
 def toggle_play_pause(a, play):
@@ -780,7 +777,6 @@ def handle_animation(annotation):
 		a = int(a)
 	except: # not an animation
 		return
-	k = 'anm%i' % a
 	step, target = None, None
 	
 	if t in ['EndLeft', 'StepLeft', 'StepRight', 'EndRight']:
@@ -790,7 +786,7 @@ def handle_animation(annotation):
 			'StepLeft':  (-1, None),
 			'StepRight': ( 1, None),
 		}[t]
-		advance_animation(k, step, target)
+		advance_animation(a, step, target)
 	
 	elif t in ['PlayLeft', 'PauseLeft', 'PauseRight', 'PlayRight']:
 		step = {
@@ -799,9 +795,9 @@ def handle_animation(annotation):
 			'PauseLeft':   0,
 			'PauseRight':  0,
 		}[t]
-		_, fps, loop = animations_state[k]
-		animations_state[k] = step, fps, loop
-		advance_animation(k)
+		_, fps, loop = animations_state[a]
+		animations_state[a] = step, fps, loop
+		advance_animation(a)
 		toggle_play_pause(a, 'Pause' in t)
 	
 	elif t in ['PlayPauseLeft', 'PlayPauseRight']:
@@ -809,15 +805,15 @@ def handle_animation(annotation):
 			'PlayPauseLeft':  -1,
 			'PlayPauseRight':  1,
 		}[t]
-		_step, fps, loop = animations_state[k]
+		_step, fps, loop = animations_state[a]
 		if _step == step:
 			step = 0
-		animations_state[k] = step, fps, loop
-		advance_animation(k)
+		animations_state[a] = step, fps, loop
+		advance_animation(a)
 		
 	elif t in ['Minus', 'Plus', 'Reset']:          pass
 	else:
-		advance_animation(k, 1)
+		advance_animation(a, 1)
 	refresher.refresh()
 
 
@@ -1753,7 +1749,8 @@ class PresenterView(NSView):
 					if a.type() != 'Widget': continue
 					k = a.valueForAnnotationKey_('T')
 					if k.startswith('anm'):
-						advance_animation(k, step)
+						a = int(k[len('anm'):])
+						advance_animation(a, step)
 						break
 			else:
 				movie_view.stepByCount_(step)
