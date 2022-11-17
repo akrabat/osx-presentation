@@ -209,12 +209,12 @@ from AppKit import (
 	NSWindowStyleMaskFullScreen,
 	NSBackingStoreBuffered,
 	NSCommandKeyMask, NSAlternateKeyMask, NSControlKeyMask, NSShiftKeyMask,
-	NSGraphicsContext,
+	NSGraphicsContext, NSZeroPoint,
 	NSCompositingOperationClear, NSCompositingOperationSourceAtop,
 	NSCompositingOperationCopy, NSCompositingOperationExclusion,
 	NSRectFillUsingOperation, NSFrameRectWithWidth, NSFrameRect, NSEraseRect,
-	NSRect, NSZeroRect, NSUnionRect, NSContainsRect, NSPointInRect, NSColor,
-	NSGradient, NSColorSpace,
+	NSRect, NSZeroRect, NSUnionRect, NSContainsRect, NSPointInRect,
+	NSColor, NSGradient, NSColorSpace,
 	NSFont, NSFontAttributeName, NSForegroundColorAttributeName,
 	NSStrokeColorAttributeName, NSStrokeWidthAttributeName,
 	NSUpArrowFunctionKey, NSLeftArrowFunctionKey,
@@ -766,8 +766,12 @@ def advance_animation(a, step=0, target=None):
 
 def toggle_play_pause(a, play):
 	for d in ['Left', 'Right']:
-		widgets['%i.Play%s' % (a, d)].setShouldDisplay_(play)
-		widgets['%i.Pause%s' % (a, d)].setShouldDisplay_(not play)
+		for p, v in [('Play', play), ('Pause', not play)]:
+			try:
+				w = widgets['%i.%s%s' % (a, p, d)]
+			except KeyError:
+				continue
+			w.setShouldDisplay_(v)
 	
 def handle_animation(annotation):
 	t = annotation.valueForAnnotationKey_('T')
@@ -973,7 +977,7 @@ drawings = defaultdict(list)
 
 slide_bbox = NSAffineTransform.transform()
 board_bbox = NSAffineTransform.transform()
-cursor_location = (0, 0)
+cursor_location = NSZeroPoint
 
 color_chooser = NSColorPanel.sharedColorPanel()
 color_chooser.setLevel_(CGShieldingWindowLevel())
@@ -2149,8 +2153,8 @@ notification_delegate = UserNotificationCenterDelegate.alloc().init()
 notification_center = UNUserNotificationCenter.currentNotificationCenter()
 notification_center.setDelegate_(notification_delegate)
 
-def notifiedError_(error):
-	NSLog("%@", error)
+def completion_handler(error):
+	if error: NSLog("%@", error)
 
 def authorizationGranted_Error_(granted, error):
 	if not granted:
@@ -2162,7 +2166,7 @@ def authorizationGranted_Error_(granted, error):
 	notification.setTitle_(_s(NAME))
 	notification.setSubtitle_('A new version (%s) is available' % version)
 	request = UNNotificationRequest.requestWithIdentifier_content_trigger_('.'.join([ID, version]), notification, None)
-	notification_center.addNotificationRequest_withCompletionHandler_(request, notifiedError_)
+	notification_center.addNotificationRequest_withCompletionHandler_(request, completion_handler)
 	
 def notify_update():
 	if user_defaults.boolForKey_(NO_NOTIFY):
