@@ -98,6 +98,7 @@ def exit_usage(message=None, code=0):
 		-i --icon          print icon then exit
 		-p --page <p>      start on page int(p)
 		-d --duration <t>  duration of the talk in minutes
+		-y --youtube       do not use invidious instance
 		<doc.pdf>          file to present
 	""" % name)
 	if message:
@@ -130,13 +131,15 @@ def exit_icon():
 # options
 
 try:
-	options, args = getopt.getopt(args, "hvip:d:", ["help", "version", "icon",
-	                                                 "page=", "duration="])
+	options, args = getopt.getopt(args, "hvip:d:y", ["help", "version", "icon",
+	                                                 "page=", "duration=",
+	                                                 "youtube"])
 except getopt.GetoptError as message:
 	exit_usage(message, 1)
 
 start_page = None
 presentation_duration = 0
+use_youtube = False
 
 for opt, value in options:
 	if opt in ["-h", "--help"]:
@@ -149,6 +152,8 @@ for opt, value in options:
 		start_page = int(value)
 	elif opt in ["-d", "--duration"]:
 		presentation_duration = int(value)
+	elif opt in ['-y', '--youtube']:
+		use_youtube = True
 
 if len(args) > 1:
 	exit_usage("no more than one argument is expected", 1)
@@ -555,6 +560,35 @@ def next_frame():   goto_page(_next(frames))
 def prev_frame():   goto_page(_prev(frames))
 def next_section(): goto_page(_next(sections))
 def prev_section(): goto_page(_prev(sections))
+
+
+# youtube redirection
+
+YOUTUBE = 'www.youtube.com'
+invidious = None
+
+def redirect(url):
+	if url and url.host() == YOUTUBE:
+		global invidious
+		if invidious is None:
+			try:
+				data, response, _ = NSURLConnection.sendSynchronousRequest_returningResponse_error_(
+					NSURLRequest.requestWithURL_cachePolicy_timeoutInterval_(
+						NSURL.URLWithString_('https://api.invidious.io/instances.json?sort_by=health'),
+						NSURLRequestReloadIgnoringLocalCacheData,
+						2
+					), None, None
+				)
+				assert response.statusCode() == 200 # found
+				import json
+				invidious, _ = json.loads(bytearray(data))[0]
+			except:
+				pass
+		s = url.absoluteString()
+		if invidious:
+			s = s.replace(YOUTUBE, invidious)
+		url = NSURL.URLWithString_(s)
+	return url
 
 
 # movie annotations
@@ -1966,6 +2000,8 @@ class PresenterView(NSView):
 			goto_page(pdf.indexForPage_(destination.page()))
 		
 		elif url:
+			if not use_youtube:
+				url = redirect(url)
 			web_view.loadRequest_(NSURLRequest.requestWithURL_(url))
 
 	delta = 0.
