@@ -119,11 +119,12 @@ $(venv):
 
 pkg: $(dist)
 	xcrun altool --notarize-app --primary-bundle-id $(IDENTIFIER) --username 'blanch@imag.fr' --password '@keychain:Developer-altool' --file $<
-	xcrun stapler staple $<
 
 $(dist): $(app)
 	productbuild --timestamp --sign "Developer ID Installer: Renaud Blanch (J6M3684Y6M)" --identifier $(IDENTIFIER) --version $(VERSION) --component $^ /Applications $@
 
+stapple:
+	xcrun stapler staple $(dist)
 
 archive:
 	hg archive -r $(VERSION) -t tbz2 $@
