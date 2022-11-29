@@ -523,14 +523,19 @@ def goto_page(page):
 pages = list(range(page_count)) # pages index
 
 frames = [] # frames index
+labels = [] # pages labels
 current_label = None
 for page_number in range(page_count):
 	page = pdf.pageAtIndex_(page_number)
 	label = page.label()
+	print(page_number, label)
+	labels.append(label)
 	if label != current_label:
 		# a new frame just started
 		frames.append(page_number)
 		current_label = label
+BOARD = -1
+labels.append(BOARD)
 
 sections = [] # sections index
 outline = pdf.outlineRoot()
@@ -1104,7 +1109,7 @@ class SlideView(NSView):
 		transform.concat()
 		slide_bbox.concat()
 		draw_page(page)
-		for path, color, size in drawings[current_page]:
+		for path, color, size in drawings[labels[current_page]]:
 			stroke(path, color, size=size)
 		
 		x, y = cursor_location
@@ -1172,7 +1177,7 @@ class BoardView(NSView):
 		_, (w, h) = bounds = self.bounds()
 		NSEraseRect(bounds)
 
-		for path, color, size in drawings["board"]:
+		for path, color, size in drawings[BOARD]:
 			stroke(path, color, outline=None, size=size)
 
 		x, y = cursor_location
@@ -1463,7 +1468,7 @@ class PresenterView(NSView):
 			page = current_page
 		else:
 			page_rect = board_view.bounds()
-			page = "board"
+			page = BOARD
 		_, (w, h) = page_rect
 		r = current_width/w
 		current_height = h*r
@@ -1477,7 +1482,7 @@ class PresenterView(NSView):
 		
 		NSGraphicsContext.saveGraphicsState()
 		
-		if page == "board":
+		if page == BOARD:
 			bbox = board_bbox
 			bbox.concat()
 			NSEraseRect(page_rect)
@@ -1507,7 +1512,7 @@ class PresenterView(NSView):
 				if annotation.type() in ['Link', 'Widget'] and annotation.shouldDisplay():
 					NSFrameRectWithWidth(annotation.bounds(), .5)
 
-		for path, color, size in drawings[page]:
+		for path, color, size in drawings[labels[page]]:
 			stroke(
 				path, color,
 				outline=None if (path, color, size) not in self.selection else NSColor.yellowColor(),
@@ -1533,7 +1538,7 @@ class PresenterView(NSView):
 		if not video_view.isHidden():
 			NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
 			rect = video_view.frame()
-			if page == "board":
+			if page == BOARD:
 				rect = transform_rect(board_bbox, rect)
 			else:
 				rect = transform_rect(slide_view.transform, rect)
@@ -1570,7 +1575,7 @@ class PresenterView(NSView):
 				self.target_page, page_count))
 		else:
 			page_number = NSString.stringWithString_("(%s) %s/%s" % (
-				self.page.label(), current_page+1, page_count))
+				labels[current_page], current_page+1, page_count))
 		attr = {
 			NSFontAttributeName:            NSFont.labelFontOfSize_(font_size),
 			NSForegroundColorAttributeName: NSColor.whiteColor(),
@@ -1737,16 +1742,17 @@ class PresenterView(NSView):
 				if self.target_page:
 					self.target_page = self.target_page[:-1]
 				else:
-					page = current_page if board_view.isHidden() else "board"
+					page = current_page if board_view.isHidden() else BOARD
+					label = labels[page]
 					if self.selection:
 						for path in self.selection:
 							try:
-								drawings[page].remove(path)
+								drawings[label].remove(path)
 							except ValueError:
 								continue
 						self.selection = []
 					else:
-						drawings[page] = drawings[page][:-1]
+						drawings[label] = drawings[label][:-1]
 			else:
 				self.target_page += c
 		
@@ -1855,16 +1861,17 @@ class PresenterView(NSView):
 				color_chooser.orderOut_(None)
 		
 		elif c == 'e': # erase annotation
-			page = current_page if board_view.isHidden() else "board"
+			page = current_page if board_view.isHidden() else BOARD
+			label = labels[page]
 			if self.selection:
 				for path in self.selection:
 					try:
-						drawings[page].remove(path)
+						drawings[label].remove(path)
 					except ValueError:
 						continue
 				self.selection = []
 			else:
-				del drawings[page]
+				del drawings[label]
 		
 		elif c == 'V': # toggle video size
 			video_view.toggle_size()
@@ -1928,9 +1935,9 @@ class PresenterView(NSView):
 		self.path.setLineJoinStyle_(NSRoundLineJoinStyle)
 		self.path.moveToPoint_(self.press_location)
 		self.path.lineToPoint_(cursor_location)
-		drawings[page].append((
+		drawings[labels[page]].append((
 			self.path, color_chooser.color(),
-			slide_view.cursor_scale*(3 if page == "board" else 1)
+			slide_view.cursor_scale*(3 if page == BOARD else 1)
 		))
 	
 	def transformSelectionBy_(self, t):
@@ -1938,9 +1945,9 @@ class PresenterView(NSView):
 			page = current_page
 			view = slide_view
 		else:
-			page = "board"
+			page = BOARD
 			view = board_view
-		for path in drawings[page]:
+		for path in drawings[labels[page]]:
 			if path not in self.selection:
 				continue
 			b, _, _ = path
@@ -1950,7 +1957,7 @@ class PresenterView(NSView):
 	def click(self):
 		if not video_view.isHidden():
 			rect = video_view.frame()
-			if page == "board":
+			if page == BOARD:
 				rect = transform_rect(board_bbox, rect)
 			else:
 				rect = transform_rect(slide_view.transform, rect)
@@ -2060,7 +2067,7 @@ class PresenterView(NSView):
 			if self.selection:
 				self.state = DRAG
 			else:
-				page = current_page if board_view.isHidden() else "board"
+				page = current_page if board_view.isHidden() else BOARD
 				self.startPathOnPage_(page)
 				self.state = DRAW
 		else:
@@ -2106,7 +2113,7 @@ class PresenterView(NSView):
 			bbox = slide_bbox if board_view.isHidden() else board_bbox
 			bbox.translateXBy_yBy_(delta.width, delta.height)
 		elif self.state == CLIC:
-			page = current_page if board_view.isHidden() else "board"
+			page = current_page if board_view.isHidden() else BOARD
 			self.startPathOnPage_(page)
 			self.state = DRAW
 		elif self.state == DRAW:
@@ -2128,7 +2135,7 @@ class PresenterView(NSView):
 		elif self.state == SELECT:
 			self.selection = [
 				(path, color, size)
-				for path, color, size in drawings[current_page if board_view.isHidden() else "board"]
+				for path, color, size in drawings[labels[current_page if board_view.isHidden() else BOARD]]
 				if NSContainsRect(self.selection_rect, path.bounds()) or NSPointInRect(path.currentPoint(), self.selection_rect)
 			]
 			self.selection_rect = NSZeroRect
