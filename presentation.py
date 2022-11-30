@@ -528,7 +528,6 @@ current_label = None
 for page_number in range(page_count):
 	page = pdf.pageAtIndex_(page_number)
 	label = page.label()
-	print(page_number, label)
 	labels.append(label)
 	if label != current_label:
 		# a new frame just started
