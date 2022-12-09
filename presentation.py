@@ -522,19 +522,17 @@ def goto_page(page):
 
 pages = list(range(page_count)) # pages index
 
-frames = [] # frames index
-labels = [] # pages labels
+frames = []      # frames index
+frame_pages = [] # list of overlays by page
 current_label = None
 for page_number in range(page_count):
 	page = pdf.pageAtIndex_(page_number)
 	label = page.label()
-	labels.append(label)
 	if label != current_label:
 		# a new frame just started
 		frames.append(page_number)
 		current_label = label
-BOARD = -1
-labels.append(BOARD)
+	frame_pages.append(list(range(frames[-1], page_number+1)))
 
 sections = [] # sections index
 outline = pdf.outlineRoot()
@@ -1009,6 +1007,8 @@ for page_number in range(page_count):
 MINIATURES_HEIGHT = origin
 
 drawings = defaultdict(list)
+BOARD = -1
+frame_pages.append([BOARD])
 
 
 # page drawing ##############################################################
@@ -1108,8 +1108,9 @@ class SlideView(NSView):
 		transform.concat()
 		slide_bbox.concat()
 		draw_page(page)
-		for path, color, size in drawings[labels[current_page]]:
-			stroke(path, color, size=size)
+		for page in frame_pages[current_page]:
+			for path, color, size in drawings[page]:
+				stroke(path, color, size=size)
 		
 		x, y = cursor_location
 		if self.show_spotlight:
@@ -1511,12 +1512,13 @@ class PresenterView(NSView):
 				if annotation.type() in ['Link', 'Widget'] and annotation.shouldDisplay():
 					NSFrameRectWithWidth(annotation.bounds(), .5)
 
-		for path, color, size in drawings[labels[page]]:
-			stroke(
-				path, color,
-				outline=None if (path, color, size) not in self.selection else NSColor.yellowColor(),
-				size=size
-			)
+		for p in frame_pages[page]:
+			for path, color, size in drawings[p]:
+				stroke(
+					path, color,
+					outline=None if (path, color, size) not in self.selection else NSColor.yellowColor(),
+					size=size
+				)
 
 		self.transform = transform
 		self.transform.prependTransform_(bbox)
@@ -1574,7 +1576,7 @@ class PresenterView(NSView):
 				self.target_page, page_count))
 		else:
 			page_number = NSString.stringWithString_("(%s) %s/%s" % (
-				labels[current_page], current_page+1, page_count))
+				self.page.label(), current_page+1, page_count))
 		attr = {
 			NSFontAttributeName:            NSFont.labelFontOfSize_(font_size),
 			NSForegroundColorAttributeName: NSColor.whiteColor(),
@@ -1742,16 +1744,15 @@ class PresenterView(NSView):
 					self.target_page = self.target_page[:-1]
 				else:
 					page = current_page if board_view.isHidden() else BOARD
-					label = labels[page]
 					if self.selection:
 						for path in self.selection:
 							try:
-								drawings[label].remove(path)
+								drawings[page].remove(path)
 							except ValueError:
 								continue
 						self.selection = []
 					else:
-						drawings[label] = drawings[label][:-1]
+						drawings[page] = drawings[page][:-1]
 			else:
 				self.target_page += c
 		
@@ -1861,16 +1862,15 @@ class PresenterView(NSView):
 		
 		elif c == 'e': # erase annotation
 			page = current_page if board_view.isHidden() else BOARD
-			label = labels[page]
 			if self.selection:
 				for path in self.selection:
 					try:
-						drawings[label].remove(path)
+						drawings[page].remove(path)
 					except ValueError:
 						continue
 				self.selection = []
 			else:
-				del drawings[label]
+				del drawings[page]
 		
 		elif c == 'V': # toggle video size
 			video_view.toggle_size()
@@ -1934,7 +1934,7 @@ class PresenterView(NSView):
 		self.path.setLineJoinStyle_(NSRoundLineJoinStyle)
 		self.path.moveToPoint_(self.press_location)
 		self.path.lineToPoint_(cursor_location)
-		drawings[labels[page]].append((
+		drawings[page].append((
 			self.path, color_chooser.color(),
 			slide_view.cursor_scale*(3 if page == BOARD else 1)
 		))
@@ -1946,7 +1946,7 @@ class PresenterView(NSView):
 		else:
 			page = BOARD
 			view = board_view
-		for path in drawings[labels[page]]:
+		for path in drawings[page]:
 			if path not in self.selection:
 				continue
 			b, _, _ = path
@@ -2134,7 +2134,7 @@ class PresenterView(NSView):
 		elif self.state == SELECT:
 			self.selection = [
 				(path, color, size)
-				for path, color, size in drawings[labels[current_page if board_view.isHidden() else BOARD]]
+				for path, color, size in drawings[current_page if board_view.isHidden() else BOARD]
 				if NSContainsRect(self.selection_rect, path.bounds()) or NSPointInRect(path.currentPoint(), self.selection_rect)
 			]
 			self.selection_rect = NSZeroRect
