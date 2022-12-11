@@ -441,7 +441,7 @@ class PageTurner(NSObject):
 		refresher.refresh()
 page_turner = PageTurner.alloc().init()
 
-_auto_turn = False
+_auto_turn = True
 duration_timer = None
 def handle_turn(page):
 	if not _auto_turn:
@@ -1776,10 +1776,10 @@ class PresenterView(NSView):
 		
 		elif c == ' ': # play/pause video
 			if movie_view.isHidden(): # or...
-				if current_page in durations or current_page in autoplay_animations: # toggle auto page turn
-					toggle_auto_turn()
-				else:                         # or toggle timer
-					send('t')
+				if current_page in durations or current_page in autoplay_animations:
+					toggle_auto_turn() # toggle auto page turn
+				else:
+					send('t')          # or toggle timer
 				return
 			
 			if movie_view.isPlaying():
@@ -1904,7 +1904,6 @@ class PresenterView(NSView):
 					NSPageUpFunctionKey:     prev_section,
 					NSPageDownFunctionKey:   next_section,
 				})
-			toggle_auto_turn(False)
 			action = actions.get(c, nop)
 			action()
 		
