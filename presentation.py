@@ -1320,7 +1320,7 @@ class VideoView(NSView):
 		try:
 			device, = devices
 		except ValueError:
-			toggle_fullscreen(False)
+			toggle_fullscreen(fullscreen=False)
 			alert = NSAlert.alloc().init()
 			alert.setIcon_(ICON)
 			alert.setMessageText_("Choose video device")
