@@ -2422,6 +2422,7 @@ presentation_window.makeFirstResponder_(presenter_view)
 # handling full screens #####################################################
 
 _switched_screens = False
+_content_views = {}
 
 def toggle_fullscreen(fullscreen=None):
 	_fullscreen = presenter_view.isInFullScreenMode()
@@ -2430,18 +2431,21 @@ def toggle_fullscreen(fullscreen=None):
 	
 	if fullscreen != _fullscreen:
 		windows = [presentation_window, presenter_window]
-		screens = list(window.screen() for window in windows)
-		if screens[0] == screens[1]:
-			screens = NSScreen.screens()
-			screens = (screens[-1], screens[0])
-		if _switched_screens:
-			screens = reversed(screens)
-		for window, screen in zip(windows, screens):
-			view = window.contentView()
-			if fullscreen:
+		if fullscreen:
+			screens = list(window.screen() for window in windows)
+			if screens[0] == screens[1]:
+				screens = NSScreen.screens()
+				screens = (screens[-1], screens[0])
+			if _switched_screens:
+				screens = reversed(screens)
+			for window, screen in zip(windows, screens):
+				view = window.contentView()
 				view.enterFullScreenMode_withOptions_(screen, {})
-			else:
-				view.exitFullScreenModeWithOptions_({})
+				_content_views[window] = view
+		else:
+			for window in windows:
+				_content_views[window].exitFullScreenModeWithOptions_({})
+		
 		if color_chooser.isVisible():
 			color_chooser.orderFront_(None)
 		video_view.layout()
@@ -2467,6 +2471,7 @@ class Refresher(NSObject):
 	def refresh(self, views=None):
 		if views is None:
 			views = [window.contentView() for window in app.windows()]
+			views = [view for view in views if view]
 		else:
 			views = views[:]
 		while views:
