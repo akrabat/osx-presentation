@@ -1649,11 +1649,11 @@ class PresenterView(NSView):
 		NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
 		NSRectFillUsingOperation(page_rect, NSCompositingOperationSourceAtop)
 		
-		ibbox = NSAffineTransform.alloc().initWithTransform_(bbox)
+		ibbox = NSAffineTransform.alloc().initWithTransform_(slide_bbox)
 		ibbox.invert()
 		ibbox.concat()
 		NSColor.grayColor().setFill()
-		_, s = bbox.transformSize_((0, 2))
+		_, s = slide_bbox.transformSize_((0, 2))
 		NSFrameRectWithWidth(page_rect, s)
 		NSGraphicsContext.restoreGraphicsState()
 	
