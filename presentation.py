@@ -1533,7 +1533,7 @@ class PresenterView(NSView):
 						continue
 					
 					FULL_SCREEN.drawInRect_fromRect_operation_fraction_(
-						((bounds.origin.x+bounds.size.width-icon_size.width-2, bounds.origin.y+2), icon_size),
+						((bounds.origin.x+bounds.size.width-icon_size.width-3, bounds.origin.y+bounds.size.height/4+3), icon_size),
 						NSZeroRect,
 						NSCompositingOperationExclusion,
 						1.
@@ -1999,14 +1999,21 @@ class PresenterView(NSView):
 		
 		if annotation in movies:
 			player_item, _ = movies[annotation]
-			bounds = annotation.bounds()
-			if bounds.size.height < MIN_POSTER_HEIGHT:
+			it = NSAffineTransform.alloc().initWithTransform_(self.transform)
+			it.prependTransform_(slide_bbox)
+			it.invert()
+			icon_size = it.transformSize_(FULL_SCREEN.size())
+			origin, size = annotation.bounds()
+			origin.x += size.width-icon_size.width-3
+			origin.y += size.height/4+3
+			if size.height < MIN_POSTER_HEIGHT or \
+			   NSPointInRect(self.press_location, (origin, icon_size)):
 				rect = slide_view.frame()
 			else:
 				it = NSAffineTransform.alloc().initWithTransform_(slide_view.transform)
 				it.invert()
 				it.prependTransform_(slide_bbox)
-				rect = transform_rect(it, bounds)
+				rect = transform_rect(it, annotation.bounds())
 			movie_view.setFrame_(rect)
 			presentation_show(movie_view)
 			movie_view.playItem_(player_item)
