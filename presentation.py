@@ -228,7 +228,7 @@ from AppKit import (
 	NSPageUpFunctionKey, NSPageDownFunctionKey,
 	NSPrevFunctionKey, NSNextFunctionKey, NSF5FunctionKey,
 	NSScreen, NSWorkspace, NSImage, NSBezierPath,
-	NSImageNameGoForwardTemplate, NSImageNameSlideshowTemplate,
+	NSImageNameSlideshowTemplate, NSImageNameEnterFullScreenTemplate,
 	NSRoundLineCapStyle, NSRoundLineJoinStyle, NSEvenOddWindingRule,
 	NSLayoutConstraint,
 	NSEventTypeApplicationDefined, NSEventSubtypeTabletPoint,
@@ -310,12 +310,19 @@ LASER_GRADIENT = NSGradient.alloc().initWithColors_atLocations_colorSpace_(
 	NSColorSpace.deviceRGBColorSpace(),
 )
 
-PLAY = NSImage.imageNamed_(NSImageNameSlideshowTemplate)
-f = CIFilter.filterWithName_('CIColorInvert')
-f.setValue_forKey_(CIImage.imageWithData_(PLAY.TIFFRepresentation()), 'inputImage')
-for r in PLAY.representations():
-	PLAY.removeRepresentation_(r)
-PLAY.addRepresentation_(NSCIImageRep.imageRepWithCIImage_(f.outputImage()))
+def image_from_template(template):
+	image = NSImage.imageNamed_(template)
+	f = CIFilter.filterWithName_withInputParameters_(
+		'CIColorInvert',
+		{'inputImage': CIImage.imageWithData_(image.TIFFRepresentation())},
+	)
+	for r in image.representations():
+		image.removeRepresentation_(r)
+	image.addRepresentation_(NSCIImageRep.imageRepWithCIImage_(f.outputImage()))
+	return image
+
+PLAY        = image_from_template(NSImageNameSlideshowTemplate)
+FULL_SCREEN = image_from_template(NSImageNameEnterFullScreenTemplate)
 
 
 # presentation ##############################################################
@@ -1046,13 +1053,12 @@ def draw_page(page):
 		if poster is None:
 			continue
 		
-		bounds_size = bounds.size
-		if bounds_size.height < MIN_POSTER_HEIGHT:
+		if bounds.size.height < MIN_POSTER_HEIGHT:
 			continue
 		
 		poster_size = poster.size()
-		aspect_ratio = ((poster_size.width*bounds_size.height)/
-		                (bounds_size.width*poster_size.height))
+		aspect_ratio = ((poster_size.width*bounds.size.height)/
+		                (bounds.size.width*poster_size.height))
 		if aspect_ratio < 1:
 			dw = bounds.size.width * (1.-aspect_ratio)
 			bounds.origin.x += dw/2.
@@ -1506,12 +1512,32 @@ class PresenterView(NSView):
 			bbox = slide_bbox
 			bbox.concat()
 			draw_page(self.page)
-		
-			# links
+
+			it = NSAffineTransform.alloc().initWithTransform_(transform)
+			it.prependTransform_(bbox)
+			it.invert()
+			icon_size = it.transformSize_(FULL_SCREEN.size())
+			
+			# links and movies
 			NSColor.blueColor().setFill()
 			for annotation in annotations(self.page):
+				bounds = annotation.bounds()
 				if annotation.type() in ['Link', 'Widget'] and annotation.shouldDisplay():
-					NSFrameRectWithWidth(annotation.bounds(), .5)
+					NSFrameRectWithWidth(bounds, .5)
+
+				if annotation in movies:
+					_, poster = movies[annotation]
+					if poster is None:
+						continue
+					if bounds.size.height < MIN_POSTER_HEIGHT:
+						continue
+					
+					FULL_SCREEN.drawInRect_fromRect_operation_fraction_(
+						((bounds.origin.x+bounds.size.width-icon_size.width-2, bounds.origin.y+2), icon_size),
+						NSZeroRect,
+						NSCompositingOperationExclusion,
+						1.
+					)
 
 		for p in frame_pages[page]:
 			for path, color, size in drawings[p]:
@@ -1707,6 +1733,8 @@ class PresenterView(NSView):
 		if hasModifiers(event, NSCommandKeyMask):
 			c = event.charactersIgnoringModifiers()
 			if c in "+=-_0)i": # slides scale
+				if not movie_view.isHidden():
+					presentation_show()
 				if c == '=': c = '+'
 				if c == '_': c = '-'
 				if c == '+':
@@ -1956,10 +1984,7 @@ class PresenterView(NSView):
 	def click(self):
 		if not video_view.isHidden():
 			rect = video_view.frame()
-			if page == BOARD:
-				rect = transform_rect(board_bbox, rect)
-			else:
-				rect = transform_rect(slide_view.transform, rect)
+			rect = transform_rect(slide_view.transform, rect)
 			if NSPointInRect(self.press_location, rect):
 				video_view.start(switch_device=True)
 				return
@@ -1974,6 +1999,15 @@ class PresenterView(NSView):
 		
 		if annotation in movies:
 			player_item, _ = movies[annotation]
+			bounds = annotation.bounds()
+			if bounds.size.height < MIN_POSTER_HEIGHT:
+				rect = slide_view.frame()
+			else:
+				it = NSAffineTransform.alloc().initWithTransform_(slide_view.transform)
+				it.invert()
+				it.prependTransform_(slide_bbox)
+				rect = transform_rect(it, bounds)
+			movie_view.setFrame_(rect)
 			presentation_show(movie_view)
 			movie_view.playItem_(player_item)
 			return
@@ -2015,6 +2049,8 @@ class PresenterView(NSView):
 		location = event.locationInWindow()
 		center = self.transform.transformPoint_(location)
 		if hasModifiers(event, NSCommandKeyMask):
+			if not movie_view.isHidden():
+				presentation_show()
 			self.zoomAt_by_(center, event.deltaY())
 		elif self.inMiniaturesAt_(location):
 			if not event.phase(): # mouse vs. gesture
@@ -2055,6 +2091,8 @@ class PresenterView(NSView):
 		if self.inMiniaturesAt_(location):
 			self.state = MIN_CLIC
 		elif hasModifiers(event, NSCommandKeyMask): # editing bbox
+			if not movie_view.isHidden():
+				presentation_show()
 			self.state = BBOX
 		elif hasModifiers(event, NSAlternateKeyMask): # starting a selection
 			self.state = SELECT
@@ -2390,7 +2428,7 @@ add_subview(presentation_view, video_view, 0)
 # views visibility
 
 def presentation_show(visible_view=slide_view):
-	for view in [slide_view, black_view, board_view, web_view, movie_view]:
+	for view in [black_view, board_view, web_view, movie_view]:
 		view.setHidden_(view != visible_view)
 
 def toggle_view(view):
