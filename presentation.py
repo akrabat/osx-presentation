@@ -1634,14 +1634,15 @@ class PresenterView(NSView):
 		
 		# help
 		if self.show_help:
-			help_text = _h("".join([
-				"<table style='color: white; font-family: LucidaGrande; font-size: 8pt;'>"
-			] + [
-				"<tr><th style='padding: 0 1em;' align='right'>%s</th><td>%s</td></tr>" % h for h in HELP
-			] + [
-				"</table>"
-			]))
-			help_text.drawAtPoint_((2*margin+current_width, 0))
+			for c in range(2):
+				help_text = _h("".join([
+					"<table style='color: white; font-family: -apple-system; font-size: 8pt;'>"
+				] + [
+					"<tr><td style='padding: 0 1em;' align='%s'>%s</td></tr>" % ('right' if c == 0 else 'left', h[c]) for h in HELP
+				] + [
+					"</table>"
+				]))
+				help_text.drawAtPoint_((margin+current_width+c*70, 0))
 		
 		
 		# thumbnails
