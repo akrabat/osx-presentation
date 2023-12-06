@@ -1899,7 +1899,14 @@ class PresenterView(NSView):
 						continue
 				self.selection = []
 			else:
-				del drawings[page]
+				for end_frame in frames:
+					if end_frame > page:
+						break
+				for p in range(page, end_frame):
+					try:
+						del drawings[p]
+					except KeyError:
+						pass
 		
 		elif c == 'V': # toggle video size
 			video_view.toggle_size()
