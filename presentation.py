@@ -1214,9 +1214,9 @@ class MovieView(NSView):
 			self.play()
 	
 	def setHidden_(self, hidden):
-		NSView.setHidden_(self, hidden)
 		if self.isHidden():
 			self.pause()
+		return super(MovieView, self).setHidden_(hidden)
 	
 	def slide_(self, slider):
 		self._pause()
@@ -1254,9 +1254,8 @@ class MovieView(NSView):
 			self.seekSlider_
 		)
 	
-	def playItem_(self, player_item):
+	def loadItem_(self, player_item):
 		player.replaceCurrentItemWithPlayerItem_(player_item)
-		self.play()
 	
 	def _pause(self):
 		player.pause()
@@ -2006,9 +2005,11 @@ class PresenterView(NSView):
 			origin, size = annotation.bounds()
 			origin.x += size.width-icon_size.width-3
 			origin.y += size.height/4+3
+			slide_frame = slide_view.frame()
 			if size.height < MIN_POSTER_HEIGHT or \
-			   NSPointInRect(self.press_location, (origin, icon_size)):
-				rect = slide_view.frame()
+			   NSPointInRect(self.press_location, (origin, icon_size)) and \
+			   movie_view.frame() != slide_frame:
+				rect = slide_frame
 			else:
 				it = NSAffineTransform.alloc().initWithTransform_(slide_view.transform)
 				it.invert()
@@ -2016,7 +2017,7 @@ class PresenterView(NSView):
 				rect = transform_rect(it, annotation.bounds())
 			movie_view.setFrame_(rect)
 			presentation_show(movie_view)
-			movie_view.playItem_(player_item)
+			movie_view.loadItem_(player_item)
 			return
 		
 		action = annotation.mouseUpAction()
