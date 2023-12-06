@@ -1636,7 +1636,7 @@ class PresenterView(NSView):
 		if self.show_help:
 			for c in range(2):
 				help_text = _h("".join([
-					"<table style='color: white; font-family: -apple-system; font-size: 8pt;'>"
+					"<table style='color: white; font-family: -apple-system; font-size: 8pt;%s'>" % (" width: 300px;" if c == 1 else "")
 				] + [
 					"<tr><td style='padding: 0 1em;' align='%s'>%s</td></tr>" % ('right' if c == 0 else 'left', h[c]) for h in HELP
 				] + [
