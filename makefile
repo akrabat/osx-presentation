@@ -131,4 +131,4 @@ archive:
 
 
 clean:
-	-rm -rf  $(dist) $(app) $(dev) $(icon) $(iconset) $(objc) $(venv)
+	-rm -rf $(dist) $(app) $(dev) $(icon) $(iconset) $(objc) $(venv)
