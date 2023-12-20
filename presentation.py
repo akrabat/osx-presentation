@@ -69,7 +69,7 @@ HELP = [
 	(        "z", "set origin for timer"),
 	(      "[/]", "sub/add  1 minute to planned time"),
 	(      "{/}", "sub/add 10 minutes"),
-	("      </>", "step movie/animation backward/forward"),
+	(      "</>", "step movie/animation backward/forward"),
 	(    "+/-/0", "zoom in/out/reset speaker notes or web view"),
 	(        "l", "toggle pointer/laser/spotlight"),
 	(      "p/P", "reduce/augment pointer/laser/spotlight size"),
@@ -286,6 +286,9 @@ def _h(s):
 	h, _ = NSAttributedString.alloc().initWithHTML_documentAttributes_(
 		_s(s).dataUsingEncoding_(NSUnicodeStringEncoding), None)
 	return h
+
+right_align = NSMutableParagraphStyle.alloc().init()
+right_align.setAlignment_(NSTextAlignmentRight)
 
 app = NSApplication.sharedApplication()
 app.activateIgnoringOtherApps_(True)
@@ -1450,13 +1453,13 @@ class PresenterView(NSView):
 				NSColor.lightGrayColor().setFill()
 				NSFrameRectWithWidth(((x, y), (w, h)), 2)
 			
-			page_number = NSString.stringWithString_("%s" % (i+1,))
+			page_number = _s("%s" % (i+1,))
 			attr = {
-				NSFontAttributeName:            NSFont.labelFontOfSize_(10),
+				NSFontAttributeName:            NSFont.labelFontOfSize_(11),
 				NSForegroundColorAttributeName: NSColor.whiteColor(),
+				NSParagraphStyleAttributeName:  right_align,
 			}
-			tw, _ = page_number.sizeWithAttributes_(attr)
-			page_number.drawAtPoint_withAttributes_((x-tw-2, y+h-12), attr)
+			page_number.drawInRect_withAttributes_(((x-52, y+h-12), (50, 15)), attr)
 	
 	
 	def drawRect_(self, rect):
@@ -1590,7 +1593,7 @@ class PresenterView(NSView):
 		else:
 			running_duration = now - self.start_time + self.elapsed_duration
 			clock = time.gmtime(abs(self.duration - running_duration))
-		clock = NSString.stringWithString_(time.strftime("%H:%M:%S", clock))
+		clock = _s(time.strftime("%H:%M:%S", clock))
 		clock.drawAtPoint_withAttributes_((margin, height-1.4*margin), {
 			NSFontAttributeName:            NSFont.labelFontOfSize_(margin),
 			NSForegroundColorAttributeName: NSColor.whiteColor(),
@@ -1599,18 +1602,19 @@ class PresenterView(NSView):
 		
 		# page number
 		if self.target_page:
-			page_number = NSString.stringWithString_("goto %s/%s" % (
+			page_number = _s("goto %s/%s" % (
 				self.target_page, page_count))
 		else:
-			page_number = NSString.stringWithString_("(%s) %s/%s" % (
+			page_number = _s("(%s) %s/%s" % (
 				self.page.label(), current_page+1, page_count))
 		attr = {
 			NSFontAttributeName:            NSFont.labelFontOfSize_(font_size),
 			NSForegroundColorAttributeName: NSColor.whiteColor(),
+			NSParagraphStyleAttributeName:  right_align,
 		}
 		tw, _ = page_number.sizeWithAttributes_(attr)
-		page_number.drawAtPoint_withAttributes_((margin+current_width-tw,
-		                                         height-1.4*margin), attr)
+		page_number.drawInRect_withAttributes_(((margin+current_width-500,
+		                                         height-1.4*margin), (500, font_size*1.2)), attr)
 		
 		if page in durations or page in autoplay_animations:
 			PLAY.drawAtPoint_fromRect_operation_fraction_(
@@ -1620,7 +1624,7 @@ class PresenterView(NSView):
 			)
 
 		# notes
-		note = NSString.stringWithString_("".join(
+		note = _s("".join(
 			"\n\n".join(notes[current_page])
 			for notes in [pdf_notes, beamer_notes]
 		))
@@ -1635,25 +1639,19 @@ class PresenterView(NSView):
 		
 		# help
 		if self.show_help:
+			attr = {
+				NSFontAttributeName:            NSFont.labelFontOfSize_(11),
+				NSForegroundColorAttributeName: NSColor.whiteColor(),
+				NSParagraphStyleAttributeName:  right_align,
+			}
 			for i, (k, v) in enumerate(reversed(HELP)):
-				par = NSMutableParagraphStyle.alloc().init()
-				par.setAlignment_(NSTextAlignmentRight)
-				k = NSString.stringWithString_(k)
-				k.drawInRect_withAttributes_(
+				_s(k).drawInRect_withAttributes_(
 					((margin+current_width+10, i*15+5), (65, 14)),
-					{
-						NSFontAttributeName:            NSFont.labelFontOfSize_(11),
-						NSForegroundColorAttributeName: NSColor.whiteColor(),
-						NSParagraphStyleAttributeName:  par,
-					}
+					attr
 				)
-				v = NSString.stringWithString_(v)
-				v.drawAtPoint_withAttributes_(
+				_s(v).drawAtPoint_withAttributes_( # drawAtPoint ignores right_align
 					(margin+current_width+90, i*15+5),
-					{
-						NSFontAttributeName:            NSFont.labelFontOfSize_(11),
-						NSForegroundColorAttributeName: NSColor.whiteColor(),
-					}
+					attr
 				)
 		
 		
