@@ -69,7 +69,7 @@ HELP = [
 	(        "z", "set origin for timer"),
 	(      "[/]", "sub/add  1 minute to planned time"),
 	(      "{/}", "sub/add 10 minutes"),
-	("&lt;/&gt;", "step movie/animation backward/forward"),
+	("      </>", "step movie/animation backward/forward"),
 	(    "+/-/0", "zoom in/out/reset speaker notes or web view"),
 	(        "l", "toggle pointer/laser/spotlight"),
 	(      "p/P", "reduce/augment pointer/laser/spotlight size"),
@@ -222,6 +222,7 @@ from AppKit import (
 	NSColor, NSGradient, NSColorSpace,
 	NSFont, NSFontAttributeName, NSForegroundColorAttributeName,
 	NSStrokeColorAttributeName, NSStrokeWidthAttributeName,
+	NSParagraphStyleAttributeName, NSMutableParagraphStyle, NSTextAlignmentRight,
 	NSUpArrowFunctionKey, NSLeftArrowFunctionKey,
 	NSDownArrowFunctionKey, NSRightArrowFunctionKey,
 	NSHomeFunctionKey, NSEndFunctionKey,
@@ -1634,15 +1635,26 @@ class PresenterView(NSView):
 		
 		# help
 		if self.show_help:
-			for c in range(2):
-				help_text = _h("".join([
-					"<table style='color: white; font-family: -apple-system; font-size: 8pt;%s'>" % (" width: 300px;" if c == 1 else "")
-				] + [
-					"<tr><td style='padding: 0 1em;' align='%s'>%s</td></tr>" % ('right' if c == 0 else 'left', h[c]) for h in HELP
-				] + [
-					"</table>"
-				]))
-				help_text.drawAtPoint_((margin+current_width+c*70, 0))
+			for i, (k, v) in enumerate(reversed(HELP)):
+				par = NSMutableParagraphStyle.alloc().init()
+				par.setAlignment_(NSTextAlignmentRight)
+				k = NSString.stringWithString_(k)
+				k.drawInRect_withAttributes_(
+					((margin+current_width+10, i*15+5), (65, 14)),
+					{
+						NSFontAttributeName:            NSFont.labelFontOfSize_(11),
+						NSForegroundColorAttributeName: NSColor.whiteColor(),
+						NSParagraphStyleAttributeName:  par,
+					}
+				)
+				v = NSString.stringWithString_(v)
+				v.drawAtPoint_withAttributes_(
+					(margin+current_width+90, i*15+5),
+					{
+						NSFontAttributeName:            NSFont.labelFontOfSize_(11),
+						NSForegroundColorAttributeName: NSColor.whiteColor(),
+					}
+				)
 		
 		
 		# thumbnails
