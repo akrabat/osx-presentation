@@ -217,6 +217,7 @@ from AppKit import (
 	NSGraphicsContext, NSZeroPoint,
 	NSCompositingOperationClear, NSCompositingOperationSourceAtop,
 	NSCompositingOperationCopy, NSCompositingOperationExclusion,
+	NSCompositingOperationDarken,
 	NSRectFillUsingOperation, NSFrameRectWithWidth, NSFrameRect, NSEraseRect,
 	NSRect, NSZeroRect, NSUnionRect, NSContainsRect, NSPointInRect,
 	NSColor, NSGradient, NSColorSpace,
@@ -1535,10 +1536,14 @@ class PresenterView(NSView):
 					if bounds.size.height < MIN_POSTER_HEIGHT:
 						continue
 					
+					rect = ((bounds.origin.x+bounds.size.width-icon_size.width-3, bounds.origin.y+bounds.size.height/6+3), icon_size)
+					NSColor.colorWithCalibratedWhite_alpha_(0., 0.5).setFill()
+					NSRectFillUsingOperation(rect, NSCompositingOperationDarken)
+					NSColor.whiteColor().setFill()
 					FULL_SCREEN.drawInRect_fromRect_operation_fraction_(
-						((bounds.origin.x+bounds.size.width-icon_size.width-3, bounds.origin.y+bounds.size.height/4+3), icon_size),
+						rect,
 						NSZeroRect,
-						NSCompositingOperationExclusion,
+						NSCompositingOperationSourceAtop,
 						1.
 					)
 
@@ -2022,7 +2027,7 @@ class PresenterView(NSView):
 			icon_size = it.transformSize_(FULL_SCREEN.size())
 			origin, size = annotation.bounds()
 			origin.x += size.width-icon_size.width-3
-			origin.y += size.height/4+3
+			origin.y += size.height/6+3
 			slide_frame = slide_view.frame()
 			if size.height < MIN_POSTER_HEIGHT or \
 			   NSPointInRect(self.press_location, (origin, icon_size)) and \
