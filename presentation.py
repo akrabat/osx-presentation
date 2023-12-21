@@ -54,21 +54,21 @@ HELP = [
 	(        "?", "show/hide this help"),
 	(    "h/q/r", "hide/quit/relaunch"),
 	(   "f/F5/⎋", "toggle/enter/leave fullscreen"),
-	("./b/w/m/s", "toggle black/board/web/movie/slide view"),
-	(      "v/c", "show/hide video view/color picker"),
 	(    "←|↑|⇞", "previous page"),
 	(    "→|↓|⇟", "next page"),
 	(     "⌘←/→", "back/forward"),
 	(     "⌘↑/↓", "previous/next frame"),
 	(     "⌘⇞/⇟", "previous/next section"),
 	(      "↖/↘", "first/last page"),
+	("./b/w/m/s", "toggle black/board/web/movie/slide view"),
+	(      "v/c", "show/hide video view/color picker"),
+	(" ⌘w/a/s/d", "move video view up/left/down/right"),
 	(    "space", "toggle page transitions (if any)"),
 	(         "", "play/pause movie (if in movie view)"),
 	(         "", "start or stop timer (other cases)"),
 	(        "t", "start or stop timer"),
 	(        "z", "set origin for timer"),
-	(      "[/]", "sub/add  1 minute to planned time"),
-	(      "{/}", "sub/add 10 minutes"),
+	(  "[/{/]/}", "sub/add 1/10 minutes to planned time"),
 	(      "</>", "step movie/animation backward/forward"),
 	(    "+/-/0", "zoom in/out/reset speaker notes or web view"),
 	(        "l", "toggle pointer/laser/spotlight"),
@@ -1298,10 +1298,12 @@ class VideoView(NSView):
 		return self
 	
 	_small = True
+	_bottom = True
+	_right = True
 	def layout(self):
 		_, (w, h) =  self.superview().frame()
 		if self._small:
-			x, y = w-self.w-20, 20
+			x, y = w-self.w-20 if self._right else 20, 20 if self._bottom else h-self.h-20
 			w, h = self.w, self.h
 		else:
 			x, y = 20, 20
@@ -1321,6 +1323,13 @@ class VideoView(NSView):
 			gravity = AVLayerVideoGravityResizeAspect
 		self.setAlphaValue_(alpha)
 		self.preview.setVideoGravity_(gravity)
+		self.layout()
+	
+	def position(self, bottom=None, right=None):
+		if bottom is not None:
+			self._bottom = bottom
+		if right is not None:
+			self._right = right
 		self.layout()
 	
 	
@@ -1763,6 +1772,17 @@ class PresenterView(NSView):
 					else:
 						global board_bbox
 						board_bbox = NSAffineTransform.transform()
+				return
+			
+			elif c in "zqwasd": # video position
+				if not video_view.isHidden():
+					if c == 'z': c = 'w' # AZERTY keyboards
+					if c == 'q': c = 'a'
+					if c in 'ad':
+						video_view.position(right=(c == 'd'))
+					else:
+						video_view.position(bottom=(c == 's'))
+					return
 		
 		if hasModifiers(event, NSControlKeyMask | NSCommandKeyMask):
 			c = event.charactersIgnoringModifiers()
