@@ -51,30 +51,28 @@ MIN_POSTER_HEIGHT = 20.
 CR, ESC, DEL = (chr(k) for k in [13, 27, 127])
 
 HELP = [
-	(        "?", "show/hide this help"),
-	(    "h/q/r", "hide/quit/relaunch"),
-	(   "f/F5/⎋", "toggle/enter/leave fullscreen"),
-	(    "←|↑|⇞", "previous page"),
-	(    "→|↓|⇟", "next page"),
-	(     "⌘←/→", "back/forward"),
-	(     "⌘↑/↓", "previous/next frame"),
-	(     "⌘⇞/⇟", "previous/next section"),
-	(      "↖/↘", "first/last page"),
-	("./b/w/m/s", "toggle black/board/web/movie/slide view"),
-	(      "v/c", "show/hide video view/color picker"),
-	(" ⌘w/a/s/d", "move video view up/left/down/right"),
-	(    "space", "toggle page transitions (if any)"),
-	(         "", "play/pause movie (if in movie view)"),
-	(         "", "start or stop timer (other cases)"),
-	(        "t", "start or stop timer"),
-	(        "z", "set origin for timer"),
-	(  "[/{/]/}", "sub/add 1/10 minutes to planned time"),
-	(      "</>", "step movie/animation backward/forward"),
-	(    "+/-/0", "zoom in/out/reset speaker notes or web view"),
-	(        "l", "toggle pointer/laser/spotlight"),
-	(      "p/P", "reduce/augment pointer/laser/spotlight size"),
-	(        "e", "erase on-screen annotations"),
-	(        "x", "switch screens"),
+	(          "?", "show/hide this help"),
+	(      "h/q/r", "hide/quit/relaunch"),
+	(     "f/F5/⎋", "toggle/enter/leave fullscreen"),
+	("←|↑|⇞/→|↓|⇟", "previous/next page"),
+	(        "↖/↘", "first/last page"),
+	(       "⌘←/→", "back/forward"),
+	(   "⌘↑/↓|⇞/⇟", "previous/next frame|section"),
+	(  "./b/w/m/s", "toggle black/board/web/movie/slide view"),
+	(        "v/c", "show/hide video view/color picker"),
+	(   "⌘w/a/s/d", "move video view up/left/down/right"),
+	(      "space", "toggle page transitions (if any)"),
+	(           "", "play/pause movie (if in movie view)"),
+	(           "", "start or stop timer (other cases)"),
+	(          "t", "start or stop timer"),
+	(          "z", "set origin for timer"),
+	(    "[/]|{/}", "sub/add 1|10 minutes to planned time"),
+	(        "</>", "step movie/animation backward/forward"),
+	(      "+/-/0", "zoom in/out/reset speaker notes or web view"),
+	(          "l", "toggle pointer/laser/spotlight"),
+	(        "p/P", "reduce/augment pointer/laser/spotlight size"),
+	(          "e", "erase on-screen annotations"),
+	(          "x", "switch screens"),
 ]
 
 def nop(): pass
@@ -1660,7 +1658,7 @@ class PresenterView(NSView):
 			}
 			for i, (k, v) in enumerate(reversed(HELP)):
 				_s(k).drawInRect_withAttributes_(
-					((margin+current_width+10, i*15+5), (65, 14)),
+					((margin+current_width+5, i*15+5), (75, 14)),
 					attr
 				)
 				_s(v).drawAtPoint_withAttributes_( # drawAtPoint ignores right_align
