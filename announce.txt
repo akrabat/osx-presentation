@@ -1,9 +1,19 @@
-I am happy to announce the release of Présentation.app 3.2.1.
+I am happy to announce the release of Présentation.app 3.3.
 
 -----------------------------------------------------------------------------
 
 Présentation.app is a presentation tool for pdf slides (e.g. produced using LaTeX and the popular beamer class) for Mac OS X.
 You can download this release here: http://iihm.imag.fr/blanch/software/osx-presentation/releases/
+
+-----------------------------------------------------------------------------
+
+3.3 announce
+
+The biggest code change introduced by this release consists in allowing to play the movies directly embedded in the slide.
+Additionally, the inset live video can now be moved to any corner of the presentation view.
+
+This release also adds some minor features/fixes (see detailed list of changes below), the most notable being a fix for bugs in the help text layout introduced by Apple's upgrade of TextKit, and a more consistant way to handle deletion of onscreen annotations for multi-frame pages.
+
 
 -----------------------------------------------------------------------------
 
@@ -91,6 +101,13 @@ http://iihm.imag.fr/blanch/software/osx-presentation/
 -----------------------------------------------------------------------------
 
 Changes since 3.0
+
+3.3.0:
+  - added the ability to play movies inside the slides
+  - added the possibility to choose the corner for the inset live video
+  - fixed help text layout messed up by textkit update
+  - fixed behaviour when erasing annotation on multi-page frames
+  - fixed bbox on preview when board is displayed
 
 3.2.1:
   - fixed fullscreen exit on ventura
