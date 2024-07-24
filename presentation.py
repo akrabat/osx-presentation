@@ -454,12 +454,12 @@ page_turner = PageTurner.alloc().init()
 _auto_turn = True
 duration_timer = None
 def handle_turn(page):
+	global duration_timer
+	if duration_timer:
+		duration_timer.invalidate()
 	if not _auto_turn:
 		return
 	if page in durations:
-		global duration_timer
-		if duration_timer:
-			duration_timer.invalidate()
 		duration_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
 			durations[page],
 			page_turner, 'turn:',
