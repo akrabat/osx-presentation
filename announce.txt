@@ -49,7 +49,7 @@ Other new features useful when presenting remotely:
 - added a "laser" pointer in addition to the highlighting cursor;
 
 
-The app is signed since 3.0, the installer is now notarized and stapled, so that it's easier to instal.
+The app is signed since 3.0, the installer is now notarized and stapled, so that it's easier to install.
 
 This is only possible by buying a membership to the apple developer program, at the cost of 99 USD a year.
 In order to cover this expense, I have setup a buymeacoffee page where any user can contribute a small amount:
