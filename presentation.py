@@ -29,7 +29,7 @@ from collections import defaultdict
 
 NAME = "Présentation"
 ID = "fr.imag.iihm.blanch.osx-presentation"
-MAJOR, MINOR, PATCH, BETA = 3, 3, 0, ''
+MAJOR, MINOR, PATCH, BETA = 3, 3, 1, ''
 VERSION = "%s.%s.%s%s" % (MAJOR, MINOR, PATCH, BETA)
 HOME = "http://iihm.imag.fr/blanch/software/osx-presentation/"
 COPYRIGHT = "Copyright © 2011-2024 Renaud Blanch"
