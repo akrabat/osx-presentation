@@ -102,6 +102,9 @@ http://iihm.imag.fr/blanch/software/osx-presentation/
 
 Changes since 3.0
 
+3.3.1:
+  - fixed timer handling for slide auto turn
+
 3.3.0:
   - added the ability to play movies inside the slides
   - added the possibility to choose the corner for the inset live video
