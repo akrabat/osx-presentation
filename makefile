@@ -25,9 +25,10 @@ dist    := osx-presentation-$(VERSION).pkg
 
 # note: codesigning, pkg notarization and stapling,
 # see https://scriptingosx.com/2019/09/notarize-a-command-line-tool/
+#     https://developer.apple.com/documentation/technotes/tn3147-migrating-to-the-latest-notarization-tool
 
 
-.PHONY: all dev pkg staple archive clean
+.PHONY: all dev pkg archive clean
 
 all: $(app)
 
@@ -75,7 +76,7 @@ $(dev): $(script) $(icon) $(objc) makefile
 			<key>LSHandlerRank</key><string>Alternate</string> \
 		</dict></array> \
 		<key>CFBundleShortVersionString</key><string>$(VERSION)</string> \
-		<key>NSHumanReadableCopyright</key><string>Copyright © 2011-2022 Renaud Blanch</string> \
+		<key>NSHumanReadableCopyright</key><string>Copyright © 2011-2024 Renaud Blanch</string> \
 		<key>CFBundleIconFile</key><string>presentation</string> \
 		<key>NSCameraUsageDescription</key><string>This app requires camera access to display video feed</string> \
 	</dict> \
@@ -118,13 +119,12 @@ $(venv):
 
 
 pkg: $(dist)
-	xcrun altool --notarize-app --primary-bundle-id $(IDENTIFIER) --username 'blanch@imag.fr' --password '@keychain:Developer-altool' --file $<
 
 $(dist): $(app)
 	productbuild --timestamp --sign "Developer ID Installer: Renaud Blanch (J6M3684Y6M)" --identifier $(IDENTIFIER) --version $(VERSION) --component $^ /Applications $@
+	xcrun notarytool submit --keychain-profile 'NotarizationProfile' --wait $@
+	xcrun stapler staple $@
 
-stapple:
-	xcrun stapler staple $(dist)
 
 archive:
 	hg archive -r $(VERSION) -t tbz2 $@
