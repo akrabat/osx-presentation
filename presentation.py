@@ -5,7 +5,7 @@
 """
 A PDF presentation tool for Mac OS X
 
-Copyright (c) 2011--2022, IIHM/LIG - Renaud Blanch <http://iihm.imag.fr/blanch/>
+Copyright (c) 2011--2024, IIHM/LIG - Renaud Blanch <http://iihm.imag.fr/blanch/>
 Licence: GPLv3 or higher <http://www.gnu.org/licenses/gpl.html>
 """
 
