@@ -282,11 +282,11 @@ def _e(result): # some binding version returns tuple with error
 	return result
 
 def _h(s):
-	h, _ = NSAttributedString.alloc().initWithHTML_documentAttributes_(
-		_s(s).dataUsingEncoding_(NSUnicodeStringEncoding), None)
+	h, _ = NSAttributedString(
+		HTML=_s(s).dataUsingEncoding_(NSUnicodeStringEncoding), documentAttributes=None)
 	return h
 
-right_align = NSMutableParagraphStyle.alloc().init()
+right_align = NSMutableParagraphStyle()
 right_align.setAlignment_(NSTextAlignmentRight)
 
 app = NSApplication.sharedApplication()
@@ -301,16 +301,16 @@ NO_NOTIFY    = '.'.join([ID, 'no_notify'])
 RECENT_FILES = '.'.join([ID, 'recent_files'])
 user_defaults = NSUserDefaults.standardUserDefaults()
 
-ICON = NSImage.alloc().initWithData_(NSData.dataWithBytes_length_(ICON, len(ICON)))
+ICON = NSImage(data=ICON)
 cursor = NSCursor.crosshairCursor()
 CURSOR = cursor.image()
 X_hot, Y_hot = cursor.hotSpot()
 
-LASER_GRADIENT = NSGradient.alloc().initWithColors_atLocations_colorSpace_(
-	[NSColor.redColor().colorWithAlphaComponent_(alpha)
+LASER_GRADIENT = NSGradient(
+	colors=[NSColor.redColor().colorWithAlphaComponent_(alpha)
 		for alpha in [.5, 1., 1., .5, 0.]],
-	[.1, .2, .4, .4, 1.],
-	NSColorSpace.deviceRGBColorSpace(),
+	atLocations=[.1, .2, .4, .4, 1.],
+	colorSpace=NSColorSpace.deviceRGBColorSpace(),
 )
 
 def image_from_template(template):
@@ -340,7 +340,7 @@ if launched_from_finder:
 				args.append(filename)
 		def applicationDidFinishLaunching_(self, notification):
 			app.stop_(self)
-	application_delegate = DropApplicationDelegate.alloc().init()
+	application_delegate = DropApplicationDelegate()
 	app.setDelegate_(application_delegate)
 	app.run()
 	restarted = True
@@ -359,14 +359,14 @@ else:
 			else:
 				exit_usage("please select a pdf file", 1)
 			app.stop_(self)
-	opener = Opener.alloc().init()
+	opener = Opener()
 	opener.performSelectorOnMainThread_withObject_waitUntilDone_("getURL", None, False)
 	app.run()
 	restarted = True
 
 
 file_name = url.lastPathComponent()
-pdf = PDFDocument.alloc().initWithURL_(url)
+pdf = PDFDocument(URL=url)
 if not pdf:
 	exit_usage("'%s' does not seem to be a pdf." % url.path(), 1)
 
@@ -449,7 +449,7 @@ class PageTurner(NSObject):
 	def turn_(self, timer):
 		next_page()
 		refresher.refresh()
-page_turner = PageTurner.alloc().init()
+page_turner = PageTurner()
 
 _auto_turn = True
 duration_timer = None
@@ -620,7 +620,7 @@ class PlayerItemObserver(NSObject):
 		self.playable = item.status() == AVPlayerItemStatusReadyToPlay
 		app.stop_(self)
 		app.postEvent_atStart_(nop_event, True) # we are not in event thread
-item_observer = PlayerItemObserver.alloc().init()
+item_observer = PlayerItemObserver()
 
 
 def get_movie(url):
@@ -655,7 +655,7 @@ def get_movie(url):
 		image_ref = _e(image_generator.copyCGImageAtTime_actualTime_error_(
 			(0, 1, 1, 0), None, None,
 		))
-		poster = NSImage.alloc().initWithCGImage_size_(image_ref, (0, 0))
+		poster = NSImage(CGImage=image_ref, size=(0, 0))
 	except:
 		poster = None
 	return player_item, poster
@@ -675,7 +675,7 @@ def parse_js(script, page_number):
 	except AttributeError:
 		pass
 	
-	context = JSContext.alloc().init()
+	context = JSContext()
 	context.evaluateScript_("""
 		// stubbing getField and any other method by subsequent results
 		const app = new Proxy({}, {
@@ -768,7 +768,7 @@ class AnimationPlayer(NSObject):
 		advance_animation(a, step)
 		refresher.refresh()
 
-animation_player = AnimationPlayer.alloc().init()
+animation_player = AnimationPlayer()
 
 animation_timer = None
 def advance_animation(a, step=0, target=None):
@@ -885,10 +885,10 @@ def add_movie_pdfannotationlink(page_number, annot, movie):
 		u = url.URLByDeletingLastPathComponent().URLByAppendingPathComponent_(movie)
 	rect = cgpdf_array2list(cgpdf_get(annot, 'Rect'))
 	x0, y0, x1, y1 = rect
-	pdf_annotation = PDFAnnotation.alloc().initWithBounds_forType_withProperties_(
-		((x0, y0), (x1-x0, y1-y0)),
-		'Link',
-		None
+	pdf_annotation = PDFAnnotation(
+		bounds=((x0, y0), (x1-x0, y1-y0)),
+		forType='Link',
+		withProperties=None
 	)
 	pdf_annotation.setURL_(u)
 	pdf.pageAtIndex_(page_number).addAnnotation_(pdf_annotation)
@@ -1203,7 +1203,7 @@ class MovieView(NSView):
 		player_layer.setFrame_(frame)
 		self.setLayer_(player_layer)
 		
-		self.slider = NSSlider.alloc().initWithFrame_(((0, 5), (frame.size.width, 25)))
+		self.slider = NSSlider(frame=((0, 5), (frame.size.width, 25)))
 		self.slider.setTarget_(self)
 		self.slider.setAction_("slide:")
 		add_subview(self, self.slider, NSViewWidthSizable)
@@ -1282,7 +1282,7 @@ class VideoView(NSView):
 		_, (w, h) = frame
 		self.w = w
 		self.h = h
-		self.session = AVCaptureSession.alloc().init()
+		self.session = AVCaptureSession()
 		if self.session.canSetSessionPreset_(AVCaptureSessionPreset320x240):
 			self.session.setSessionPreset_(AVCaptureSessionPreset320x240)
 		self.setWantsLayer_(True)
@@ -1338,11 +1338,11 @@ class VideoView(NSView):
 			device, = devices
 		except ValueError:
 			toggle_fullscreen(fullscreen=False)
-			alert = NSAlert.alloc().init()
+			alert = NSAlert()
 			alert.setIcon_(ICON)
 			alert.setMessageText_("Choose video device")
 			alert.setInformativeText_("The following devices are available:")
-			popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(((0, 0), (200, 25)), False)
+			popup = NSPopUpButton(frame=((0, 0), (200, 25)), pullsDown=False)
 			for device in devices:
 				popup.addItemWithTitle_(device.localizedName())
 			alert.setAccessoryView_(popup)
@@ -1524,7 +1524,7 @@ class PresenterView(NSView):
 			bbox.concat()
 			draw_page(self.page)
 
-			it = NSAffineTransform.alloc().initWithTransform_(transform)
+			it = NSAffineTransform(transform=transform)
 			it.prependTransform_(bbox)
 			it.invert()
 			icon_size = it.transformSize_(FULL_SCREEN.size())
@@ -1697,7 +1697,7 @@ class PresenterView(NSView):
 		NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
 		NSRectFillUsingOperation(page_rect, NSCompositingOperationSourceAtop)
 		
-		ibbox = NSAffineTransform.alloc().initWithTransform_(slide_bbox)
+		ibbox = NSAffineTransform(transform=slide_bbox)
 		ibbox.invert()
 		ibbox.concat()
 		NSColor.grayColor().setFill()
@@ -2039,7 +2039,7 @@ class PresenterView(NSView):
 		
 		if annotation in movies:
 			player_item, _ = movies[annotation]
-			it = NSAffineTransform.alloc().initWithTransform_(self.transform)
+			it = NSAffineTransform(transform=self.transform)
 			it.prependTransform_(slide_bbox)
 			it.invert()
 			icon_size = it.transformSize_(FULL_SCREEN.size())
@@ -2052,7 +2052,7 @@ class PresenterView(NSView):
 			   movie_view.frame() != slide_frame:
 				rect = slide_frame
 			else:
-				it = NSAffineTransform.alloc().initWithTransform_(slide_view.transform)
+				it = NSAffineTransform(transform=slide_view.transform)
 				it.invert()
 				it.prependTransform_(slide_bbox)
 				rect = transform_rect(it, annotation.bounds())
@@ -2247,10 +2247,10 @@ def add_item(menu, title, action, key="", modifiers=NSCommandKeyMask, target=app
 	return menu_item
 
 def setup_menu(delegate):
-	main_menu = NSMenu.alloc().initWithTitle_("MainMenu")
+	main_menu = NSMenu(title="MainMenu")
 	
 	application_menuitem = main_menu.addItemWithTitle_action_keyEquivalent_("Application", None, ' ')
-	application_menu = NSMenu.alloc().initWithTitle_("Application")
+	application_menu = NSMenu(title="Application")
 	
 	add_item(application_menu, ["About", NAME], "about:", target=delegate)
 	add_item(application_menu, ["Check for updates…"], "update:", target=delegate)
@@ -2263,7 +2263,7 @@ def setup_menu(delegate):
 	main_menu.setSubmenu_forItem_(application_menu, application_menuitem)
 
 	view_menuitem = main_menu.addItemWithTitle_action_keyEquivalent_("View", None, ' ')
-	view_menu = NSMenu.alloc().initWithTitle_("View")
+	view_menu = NSMenu(title="View")
 	add_item(view_menu, ["Enter Full Screen"], "fullScreen:", 'f', NSCommandKeyMask | NSControlKeyMask, target=delegate)
 	main_menu.setSubmenu_forItem_(view_menu, view_menuitem)
 	
@@ -2278,7 +2278,7 @@ class UserNotificationCenterDelegate(NSObject):
 	def userNotificationCenter_didReceiveNotificationResponse_withCompletionHandler_(self, center, response, handler):
 		NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(HOME))
 		handler()
-notification_delegate = UserNotificationCenterDelegate.alloc().init()
+notification_delegate = UserNotificationCenterDelegate()
 notification_center = UNUserNotificationCenter.currentNotificationCenter()
 notification_center.setDelegate_(notification_delegate)
 
@@ -2291,7 +2291,7 @@ def authorizationGranted_Error_(granted, error):
 	version = get_version()
 	if version in [VERSION, None]:
 		return
-	notification = UNMutableNotificationContent.alloc().init()
+	notification = UNMutableNotificationContent()
 	notification.setTitle_(_s(NAME))
 	notification.setSubtitle_('A new version (%s) is available' % version)
 	request = UNNotificationRequest.requestWithIdentifier_content_trigger_('.'.join([ID, version]), notification, None)
@@ -2393,12 +2393,12 @@ def create_window(title, Window=NSWindow, style=NSWindowStyleMaskTitled|NSWindow
 	else:
 		o, (w, _) = PRESENTER_FRAME
 		frame = o, (w, w/ratio)
-	window = Window.alloc().initWithContentRect_styleMask_backing_defer_screen_(
-		frame,
-		style | NSWindowStyleMaskResizable,
-		NSBackingStoreBuffered,
-		NO,
-		None,
+	window = Window(
+		contentRect=frame,
+		styleMask=style | NSWindowStyleMaskResizable,
+		backing=NSBackingStoreBuffered,
+		defer=NO,
+		screen=None,
 	)
 	window.setTitle_(title)
 	window.makeKeyAndOrderFront_(nil)
@@ -2409,7 +2409,7 @@ def create_window(title, Window=NSWindow, style=NSWindowStyleMaskTitled|NSWindow
 def create_view(View, frame=None, window=None):
 	if frame is None:
 		frame = window.frame()
-	view = View.alloc().initWithFrame_(frame)
+	view = View(frame=frame)
 	view.setBackgroundColor_(NSColor.blackColor())
 	if window is not None:
 		window.setContentView_(view)
@@ -2451,13 +2451,13 @@ add_subview(presentation_view, board_view)
 
 # web view
 
-web_view = WKWebView.alloc().initWithFrame_configuration_(frame, WKWebViewConfiguration.alloc().init())
+web_view = WKWebView(frame=frame, configuration=WKWebViewConfiguration())
 
 class NavigationDelegate(NSObject):
 #	def webView_didStartProvisionalNavigation_(self, view, navigation):
 	def webView_didFinishNavigation_(self, view, navigation):
 		presentation_show(web_view)
-navigation_delegate = NavigationDelegate.alloc().init()
+navigation_delegate = NavigationDelegate()
 web_view.setNavigationDelegate_(navigation_delegate)
 
 add_subview(presentation_view, web_view)
@@ -2470,7 +2470,7 @@ add_subview(presentation_view, movie_view)
 # video view
 
 _, (w, _) = frame
-video_view = VideoView.alloc().initWithFrame_(((w-200-20, 20), (200, 180)))
+video_view = VideoView(frame=((w-200-20, 20), (200, 180)))
 add_subview(presentation_view, video_view, 0)
 
 
@@ -2544,7 +2544,7 @@ def toggle_fullscreen(fullscreen=None):
 
 # main loop #################################################################
 
-application_delegate = ApplicationDelegate.alloc().init()
+application_delegate = ApplicationDelegate()
 app.setDelegate_(application_delegate)
 
 # HACK: ensure ApplicationDelegate.applicationDidFinishLaunching_ is called
@@ -2567,7 +2567,7 @@ class Refresher(NSObject):
 			view.setNeedsDisplay_(True)
 			for subview in view.subviews():
 				views.append(subview)
-refresher = Refresher.alloc().init()
+refresher = Refresher()
 
 refresher_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
 	1.,
