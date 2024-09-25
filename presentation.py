@@ -170,7 +170,7 @@ for path in [
 		os.path.dirname(os.path.realpath(__file__)), *path, 'packages', python_version))
 
 try:
-	from objc import setVerbose
+	import objc
 except ImportError:
 	exit_popup("""\
 		The Python executable referenced by
@@ -180,9 +180,9 @@ except ImportError:
 		For Présentation.app to work, you have to install the PyObjC package for this version of Python.
 	""")
 	
-setVerbose(1)
+objc.options.verbose = 1
 
-from objc import nil, NO, YES
+from objc import nil, NO, YES, super
 
 from Foundation import (
 	NSLog, NSNotificationCenter, NSUserDefaults, NSAffineTransform,

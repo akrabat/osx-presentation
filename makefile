@@ -101,7 +101,7 @@ $(iconset): $(script)
 
 
 $(objc): requirements.txt $(venv)
-	for python_version in 3.7 3.8; do \
+	for python_version in 3.8; do \
 		mkdir -p $@/$$python_version; \
 		$(venv)/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --upgrade --python-version=$$python_version --target=$@/$$python_version -r $< ; \
 	done
