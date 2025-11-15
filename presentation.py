@@ -1825,11 +1825,16 @@ class PresenterView(NSView):
 			toggle_fullscreen(fullscreen=True)
 		
 		elif c == 'x':
-			global _switched_screens
-			_switched_screens = not _switched_screens
-			toggle_fullscreen()
-			toggle_fullscreen()
-		
+			# swap screens if in full screen mode
+			if self.isInFullScreenMode():
+				global _switched_screens
+				_switched_screens = not _switched_screens
+				toggle_fullscreen(fullscreen=False)
+				# Delay before re-entering with swapped screens on main thread for macOS 26
+				# This is possibly due to changes related to animations
+				NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+					0.1, self, "reenterFullscreen:", None, False)
+
 		elif c == 'h':
 			app.hide_(app)
 		
@@ -1977,8 +1982,11 @@ class PresenterView(NSView):
 			action()
 		
 		refresher.refresh()
-	
-	
+
+	def reenterFullscreen_(self, sender):
+		"""Re-enter fullscreen mode after screen swap delay. Called by NSTimer on main thread."""
+		toggle_fullscreen(fullscreen=True)
+
 	# interaction
 
 	def inMiniaturesAt_(self, point):
