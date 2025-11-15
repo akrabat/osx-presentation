@@ -49,8 +49,8 @@ $(app): $(dev)
 		<true/> \
 	</dict> \
 	</plist>" | plutil -convert xml1 - -o $@/Contents/Entitlements.plist
-	find $@ -name '*.so' -exec codesign --verbose --force --timestamp -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)" --entitlements $@/Contents/Entitlements.plist -o runtime {} ';'
-	codesign --verbose --force --deep --timestamp -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)" --entitlements $@/Contents/Entitlements.plist -o runtime $@
+	find $@ -name '*.so' -exec codesign --verbose --force --timestamp -s "Developer ID Application: Nineteen Feet Ltd (F4N54WKAUN)" --entitlements $@/Contents/Entitlements.plist -o runtime {} ';'
+	codesign --verbose --force --deep --timestamp -s "Developer ID Application: Nineteen Feet Ltd (F4N54WKAUN)" --entitlements $@/Contents/Entitlements.plist -o runtime $@
 	
 	touch $@
 
@@ -121,7 +121,7 @@ $(venv):
 pkg: $(dist)
 
 $(dist): $(app)
-	productbuild --timestamp --sign "Developer ID Installer: Renaud Blanch (J6M3684Y6M)" --identifier $(IDENTIFIER) --version $(VERSION) --component $^ /Applications $@
+	productbuild --timestamp --sign "Developer ID Installer: Nineteen Feet Ltd (F4N54WKAUN)" --identifier $(IDENTIFIER) --version $(VERSION) --component $^ /Applications $@
 	xcrun notarytool submit --keychain-profile 'NotarizationProfile' --wait $@
 	xcrun stapler staple $@
 
