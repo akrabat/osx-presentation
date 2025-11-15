@@ -3,6 +3,11 @@
 > 
 > It is probably out of date, so please use the original unless you specifically need the changes here.
 
+## Changes from osx-presentation 3.3.1
+
+- Fix freeze when switching screens on macOS 26 Tahoe.
+
+--- 
 
 # presentation.py
 
