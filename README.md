@@ -1,12 +1,15 @@
-===============
-presentation.py
-===============
+> [!IMPORTANT]
+> This is a fork of https://foss.heptapod.net/macos-apps/osx-presentation/.
+> 
+> It is probably out of date, so please use the original unless you specifically need the changes here.
+
+
+# presentation.py
 
 a pdf presentation tool for Mac OS X
 
 
-Features
---------
+## Features
 
 A multi-screen presentation tool for pdf on the mac, with some (more or less) useful features:
 
@@ -20,7 +23,6 @@ Download and documentation are available at:
 [http://iihm.imag.fr/blanch/software/osx-presentation/]
 
 
-Support
--------
+## Support
 
 You can support Présentation.app development by buying me a tea at: [https://www.buymeacoffee.com/rndblnch]
