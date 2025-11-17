@@ -6,6 +6,7 @@
 ## Changes from osx-presentation 3.3.1
 
 - Fix freeze when switching screens on macOS 26 Tahoe.
+- Make the speaker notes take up the entire width of the presenter view.
 
 --- 
 
