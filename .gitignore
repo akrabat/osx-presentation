@@ -1,0 +1,11 @@
+.DS_Store
+P*.app/*
+env/
+osx-presentation-*
+presentation.icns
+presentation.iconset/*
+demo/*
+test/*
+web/*
+packages/*
+D*.app/*
