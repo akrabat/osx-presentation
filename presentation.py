@@ -1641,7 +1641,7 @@ class PresenterView(NSView):
 			for notes in [pdf_notes, beamer_notes]
 		))
 		note.drawInRect_withAttributes_(
-			((margin, font_size), (current_width, height-current_height-2.5*margin)),
+			((margin, font_size), (width-2*margin, height-current_height-2.5*margin)),
 			{
 				NSFontAttributeName:            NSFont.labelFontOfSize_(font_size*self.notes_scale),
 				NSForegroundColorAttributeName: NSColor.whiteColor(),
@@ -1656,6 +1656,21 @@ class PresenterView(NSView):
 				NSForegroundColorAttributeName: NSColor.whiteColor(),
 				NSParagraphStyleAttributeName:  right_align,
 			}
+
+			# Calculate required width based on actual text
+			max_help_line_width = 0
+			for k, v in HELP:
+				value_width, _ = _s(v).sizeWithAttributes_(attr)
+				max_help_line_width = max(max_help_line_width, value_width)
+
+			# Draw translucent background box
+			help_height = len(HELP) * 15 + 10
+			help_width = 90 + max_help_line_width + 5  # 90 is where values start, 5 for right padding
+			NSColor.colorWithCalibratedRed_green_blue_alpha_(0., 0.08, 0.25, 1.0).setFill()
+			NSRectFillUsingOperation(
+				((margin+current_width+5, 5), (help_width, help_height)),
+				NSCompositingOperationCopy
+			)
 			for i, (k, v) in enumerate(reversed(HELP)):
 				_s(k).drawInRect_withAttributes_(
 					((margin+current_width+5, i*15+5), (75, 14)),
